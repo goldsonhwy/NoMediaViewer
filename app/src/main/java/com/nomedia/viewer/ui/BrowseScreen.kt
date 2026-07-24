@@ -37,47 +37,55 @@ fun BrowseScreen(
     unviewed: List<ImageFile>,
     columns: Int,
     isFavorite: (String) -> Boolean,
+    isRead: (String) -> Boolean,
     onFavorite: (String) -> Unit,
     onOpenFull: (ImageFile) -> Unit,
     onViewed: (String) -> Unit,
+    onEndReached: () -> Unit,
     onBack: () -> Unit,
     onScrollUp: () -> Unit,
     onScrollDown: () -> Unit
 ) {
-    val display = if (unviewed.isNotEmpty()) unviewed else images
+    val display = images
     if (images.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) { Text("请先从文件夹页选择一个相册", color = Color(0xFF888888)) }
         return
     }
     Box(Modifier.fillMaxSize()) {
-        if (columns == 2) TwoColumn(display, isFavorite, onFavorite, onOpenFull, onViewed, onScrollUp, onScrollDown)
-        else OneColumn(display, isFavorite, onFavorite, onOpenFull, onViewed, onScrollUp, onScrollDown)
+        if (columns == 2) TwoColumn(display, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onEndReached, onScrollUp, onScrollDown)
+        else OneColumn(display, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onEndReached, onScrollUp, onScrollDown)
     }
 }
 
 @Composable
-private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
+private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onEndReached:()->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
     val state = rememberLazyListState()
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     LaunchedEffect(state, images) { snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { if (it > 0 && it <= images.size) onViewed(images[it-1].path) } }
+    LaunchedEffect(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, images) {
+        if (images.isNotEmpty() && state.firstVisibleItemIndex >= images.lastIndex && state.firstVisibleItemScrollOffset > 80) onEndReached()
+    }
     LazyColumn(state = state, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, onFavorite, onOpenFull) }
+        itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
 }
 
 @Composable
-private fun TwoColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
+private fun TwoColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onEndReached:()->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
     val state = rememberLazyGridState()
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     LaunchedEffect(state, images) { snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { if (it > 0 && it <= images.size) onViewed(images[it-1].path) } }
+    LaunchedEffect(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, images) {
+        if (images.isNotEmpty() && state.firstVisibleItemIndex >= (images.lastIndex - 1).coerceAtLeast(0) && state.firstVisibleItemScrollOffset > 80) onEndReached()
+    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(2), state = state, modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(1.dp), verticalArrangement = Arrangement.spacedBy(1.dp)
-    ) { itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, onFavorite, onOpenFull) } }
+    ) { itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) } }
 }
 
 @Composable
-private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {
+private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {
     val ctx = LocalContext.current
     Box(Modifier.fillMaxWidth().background(Color(0xFF111111)).pointerInput(img.path) { detectTapGestures(onTap = { onFavorite(img.path) }, onDoubleTap = { onOpenFull(img) }) }) {
         AsyncImage(
@@ -91,6 +99,7 @@ private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, onFavorite:
             modifier = Modifier.fillMaxWidth(),
             contentScale = ContentScale.FillWidth
         )
+        if (isRead(img.path)) GreenCorner(modifier = Modifier.align(Alignment.TopStart), topRight = false, size = 14.dp)
         if (isFavorite(img.path)) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFF6B6B))
     }
 }

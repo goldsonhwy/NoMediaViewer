@@ -43,7 +43,8 @@ class AppRepository(private val context: Context) {
                 name = File(first.parentPath).name.ifBlank { first.parentPath },
                 coverPath = first.path,
                 count = list.size,
-                latestModified = first.lastModified
+                latestModified = first.lastModified,
+                imagePaths = sorted.map { it.path }
             )
         }.sortedWith(compareByDescending<FolderAlbum> { it.latestModified }.thenBy { it.name.lowercase() })
     }

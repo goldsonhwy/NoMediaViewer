@@ -109,12 +109,14 @@ class MainActivity : ComponentActivity() {
                             0 -> BrowseScreen(
                                 title = state.browsingTitle,
                                 images = state.images,
-                                unviewed = state.unviewed,
+                                unviewed = emptyList(),
                                 columns = state.columns,
                                 isFavorite = { vm.isFavorite(it) },
+                                isRead = { it in state.viewed },
                                 onFavorite = { vm.toggleFavorite(it) },
                                 onOpenFull = { vm.openFullscreen(it) },
-                                onViewed = { vm.recordViewed(it) },
+                                onViewed = { vm.markRead(it) },
+                                onEndReached = { vm.goNextAlbumIfPossible() },
                                 onBack = { vm.setTab(1) },
                                 onScrollUp = { vm.setBottomVisible(false) },
                                 onScrollDown = { vm.setBottomVisible(true) }
@@ -122,6 +124,7 @@ class MainActivity : ComponentActivity() {
                             1 -> FolderBrowserScreen(
                                 albums = state.albums,
                                 selectedPaths = state.selectedAlbumPaths,
+                                viewed = state.viewed,
                                 loading = state.loading,
                                 message = state.message,
                                 onAlbumClick = { vm.browseAlbum(it) },
@@ -142,6 +145,17 @@ class MainActivity : ComponentActivity() {
                                 onSaveStorage = { vm.saveStorage(it) },
                                 onTestWebDav = { url, user, pass, cb -> vm.testWebDav(url, user, pass, cb) }
                             )
+                        }
+                    }
+                }
+                state.transientNotice?.let { notice ->
+                    Box(Modifier.matchParentSize(), contentAlignment = Alignment.TopCenter) {
+                        Surface(
+                            modifier = Modifier.padding(top = 22.dp),
+                            color = Color(0xCC0F3460),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+                        ) {
+                            Text(notice, color = Color.White, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                         }
                     }
                 }

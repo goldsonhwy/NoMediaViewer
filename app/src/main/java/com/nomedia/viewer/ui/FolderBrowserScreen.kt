@@ -2,6 +2,7 @@ package com.nomedia.viewer.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.aspectRatio
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,7 @@ import com.nomedia.viewer.FolderAlbum
 fun FolderBrowserScreen(
     albums: List<FolderAlbum>,
     selectedPaths: Set<String>,
+    viewed: Set<String>,
     loading: Boolean,
     message: String?,
     onAlbumClick: (String) -> Unit,
@@ -56,6 +59,7 @@ fun FolderBrowserScreen(
             ) {
                 items(albums, key = { it.path }) { album ->
                     val selected = album.path in selectedPaths
+                    val allRead = album.imagePaths.isNotEmpty() && album.imagePaths.all { it in viewed }
                     Card(
                         modifier = Modifier.combinedClickable(
                             onClick = { if (selectedPaths.isEmpty()) onAlbumClick(album.path) else onAlbumLongClick(album.path) },
@@ -77,6 +81,7 @@ fun FolderBrowserScreen(
                                 modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
                                 contentScale = ContentScale.Crop
                             )
+                            if (allRead) GreenCorner(modifier = Modifier.align(Alignment.TopEnd), topRight = true, size = 18.dp)
                             if (selected) {
                                 Box(Modifier.matchParentSize().background(Color(0x55000000)))
                                 Icon(Icons.Default.CheckCircle, null, tint = Color(0xFFE94560), modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp))

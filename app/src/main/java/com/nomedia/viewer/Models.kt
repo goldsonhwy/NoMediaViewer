@@ -13,7 +13,8 @@ data class FolderAlbum(
     val name: String,
     val coverPath: String,
     val count: Int,
-    val latestModified: Long
+    val latestModified: Long,
+    val imagePaths: List<String> = emptyList()
 )
 
 enum class StorageType { LOCAL, WEBDAV, SMB }
