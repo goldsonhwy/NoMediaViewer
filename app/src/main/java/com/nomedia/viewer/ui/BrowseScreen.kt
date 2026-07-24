@@ -10,12 +10,9 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.size.Precision
 import com.nomedia.viewer.ImageFile
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -41,7 +39,6 @@ fun BrowseScreen(
     isFavorite: (String) -> Boolean,
     onFavorite: (String) -> Unit,
     onViewed: (String) -> Unit,
-    onReset: () -> Unit,
     onBack: () -> Unit,
     onScrollUp: () -> Unit,
     onScrollDown: () -> Unit
@@ -55,11 +52,6 @@ fun BrowseScreen(
         if (columns == 2) TwoColumn(display, isFavorite, onFavorite, onViewed, onScrollUp, onScrollDown)
         else OneColumn(display, isFavorite, onFavorite, onViewed, onScrollUp, onScrollDown)
         TopOverlay(title, unviewed.size, images.size, onBack)
-        FloatingActionButton(
-            onClick = onReset,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-            containerColor = Color(0xFF0F3460), contentColor = Color.White
-        ) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.VisibilityOff, null, Modifier.size(20.dp)); Text("重置", fontSize = 9.sp) } }
     }
 }
 
@@ -69,7 +61,7 @@ private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, on
     TrackIndex(state.firstVisibleItemIndex, onScrollUp, onScrollDown)
     LaunchedEffect(state, images) { snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { if (it > 0 && it <= images.size) onViewed(images[it-1].path) } }
     LazyColumn(state = state, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, onFavorite, Modifier.fillMaxWidth()) }
+        itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, onFavorite) }
     }
 }
 
@@ -81,21 +73,25 @@ private fun TwoColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, on
     LazyVerticalGrid(
         columns = GridCells.Fixed(2), state = state, modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(1.dp), verticalArrangement = Arrangement.spacedBy(1.dp)
-    ) { itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, onFavorite, Modifier.fillMaxWidth()) } }
+    ) { itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, onFavorite) } }
 }
 
 @Composable
-private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, onFavorite:(String)->Unit, modifier: Modifier) {
+private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, onFavorite:(String)->Unit) {
     val ctx = LocalContext.current
-    var pulse by remember { mutableStateOf(false) }
-    Box(modifier.pointerInput(img.path) { detectTapGestures(onDoubleTap = { onFavorite(img.path); pulse = true }) }) {
+    Box(Modifier.fillMaxWidth().background(Color(0xFF111111)).pointerInput(img.path) { detectTapGestures(onDoubleTap = { onFavorite(img.path) }) }) {
         AsyncImage(
-            model = ImageRequest.Builder(ctx).data("file://${img.path}").crossfade(true).build(),
+            model = ImageRequest.Builder(ctx)
+                .data("file://${img.path}")
+                .crossfade(false)
+                .allowHardware(true)
+                .precision(Precision.INEXACT)
+                .build(),
             contentDescription = null,
-            modifier = Modifier.fillMaxWidth().background(Color(0xFF111111)),
+            modifier = Modifier.fillMaxWidth(),
             contentScale = ContentScale.FillWidth
         )
-        if (isFavorite(img.path) || pulse) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFF6B6B))
+        if (isFavorite(img.path)) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFF6B6B))
     }
 }
 

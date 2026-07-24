@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.size.Precision
+import coil.size.Size
 import com.nomedia.viewer.FolderAlbum
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -63,7 +65,13 @@ fun FolderBrowserScreen(
                     ) {
                         Box(Modifier.fillMaxWidth().height(132.dp)) {
                             AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current).data("file://${album.coverPath}").crossfade(true).build(),
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data("file://${album.coverPath}")
+                                    .crossfade(false)
+                                    .allowHardware(true)
+                                    .precision(Precision.INEXACT)
+                                    .size(360, 360)
+                                    .build(),
                                 contentDescription = album.name,
                                 modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
                                 contentScale = ContentScale.Crop

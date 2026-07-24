@@ -34,6 +34,7 @@ fun SettingsScreen(
     onRootEnabled: (String, Boolean) -> Unit,
     onRemoveRoot: (String) -> Unit,
     resolvePath: (Uri) -> String?,
+    onResetViewed: () -> Unit,
     onSaveStorage: (StorageConfig) -> Unit,
     onTestWebDav: (String, String, String, (String) -> Unit) -> Unit
 ) {
@@ -73,6 +74,12 @@ fun SettingsScreen(
                 FilterChip(selected = columns == 1, onClick = { onColumns(1) }, label = { Text("单列") })
                 FilterChip(selected = columns == 2, onClick = { onColumns(2) }, label = { Text("双列") })
             }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onResetViewed,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A5C))
+            ) { Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp)); Text("重置阅后即焚记录") }
         }
         Spacer(Modifier.height(16.dp))
         Section("收藏存储") {

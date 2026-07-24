@@ -94,8 +94,7 @@ class MainActivity : ComponentActivity() {
                                 columns = state.columns,
                                 isFavorite = { vm.isFavorite(it) },
                                 onFavorite = { vm.toggleFavorite(it) },
-                                onViewed = { vm.markViewed(it) },
-                                onReset = { vm.resetViewed() },
+                                onViewed = { vm.recordViewed(it) },
                                 onBack = { vm.setTab(1) },
                                 onScrollUp = { vm.setBottomVisible(false) },
                                 onScrollDown = { vm.setBottomVisible(true) }
@@ -119,6 +118,7 @@ class MainActivity : ComponentActivity() {
                                 onRootEnabled = { uri, en -> vm.setRootEnabled(uri, en) },
                                 onRemoveRoot = { vm.removeRoot(it) },
                                 resolvePath = { vm.pathFromUri(it) },
+                                onResetViewed = { vm.resetViewed() },
                                 onSaveStorage = { vm.saveStorage(it) },
                                 onTestWebDav = { url, user, pass, cb -> vm.testWebDav(url, user, pass, cb) }
                             )
