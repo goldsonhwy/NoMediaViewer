@@ -10,6 +10,7 @@ import android.os.Environment
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -17,6 +18,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -56,6 +58,10 @@ class MainActivity : ComponentActivity() {
                 val state by vm.state.collectAsState()
                 LaunchedEffect(Unit) { checkPermissions() }
 
+                BackHandler(enabled = state.currentTab == 0) {
+                    vm.setTab(1)
+                }
+
                 state.fullscreenImage?.let { img ->
                     FullscreenViewer(img, vm.isFavorite(img.path), onToggleFavorite = { vm.toggleFavorite(img.path) }, onDismiss = { vm.closeFullscreen() })
                     return@MaterialTheme
@@ -70,7 +76,11 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     containerColor = DarkBackground,
                     bottomBar = {
-                        AnimatedVisibility(visible = state.bottomBarVisible, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+                        AnimatedVisibility(
+                            visible = state.bottomBarVisible,
+                            enter = slideInVertically(animationSpec = tween(90)) { it } + fadeIn(animationSpec = tween(70)),
+                            exit = slideOutVertically(animationSpec = tween(70)) { it } + fadeOut(animationSpec = tween(50))
+                        ) {
                             NavigationBar(containerColor = DarkSurface) {
                                 tabs.forEachIndexed { idx, tab ->
                                     NavigationBarItem(

@@ -60,7 +60,7 @@ fun SettingsScreen(
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(r.name, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(r.path, color = Color(0xFF777777), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(r.path, color = Color(0xFFB0B0B0), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Switch(checked = r.enabled, onCheckedChange = { onRootEnabled(r.uri, it) })
                         IconButton(onClick = { onRemoveRoot(r.uri) }) { Icon(Icons.Default.Delete, null, tint = Color(0x99FF6B6B)) }
@@ -92,7 +92,7 @@ fun SettingsScreen(
                 when (cfg.type) {
                     StorageType.LOCAL -> {
                         Button(onClick = { localPick.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A5C))) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.localPath.isBlank()) "选择本地存储目录" else "已选择本地目录") }
-                        if (cfg.localPath.isNotBlank()) Text(cfg.localPath, color = Color(0xFF888888), fontSize = 11.sp)
+                        if (cfg.localPath.isNotBlank()) Text(cfg.localPath, color = Color(0xFFB0B0B0), fontSize = 11.sp)
                     }
                     StorageType.WEBDAV -> {
                         Field("WebDAV地址", cfg.webdavUrl) { cfg = cfg.copy(webdavUrl = it) }
@@ -121,4 +121,4 @@ fun SettingsScreen(
     Spacer(Modifier.height(8.dp))
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF16213E)), shape = RoundedCornerShape(12.dp)) { Column(Modifier.fillMaxWidth().padding(14.dp), content = content) }
 }
-@Composable private fun Field(label: String, value: String, onChange: (String)->Unit) { OutlinedTextField(value, onChange, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)) }
+@Composable private fun Field(label: String, value: String, onChange: (String)->Unit) { OutlinedTextField(value, onChange, label = { Text(label, color = Color(0xFFE0E0E0)) }, modifier = Modifier.fillMaxWidth(), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = Color.White, unfocusedLabelColor = Color(0xFFE0E0E0), focusedBorderColor = Color(0xFFE94560), unfocusedBorderColor = Color(0xFF9A9A9A), cursorColor = Color(0xFFE94560))) }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -63,7 +64,7 @@ fun FolderBrowserScreen(
                         shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF111111))
                     ) {
-                        Box(Modifier.fillMaxWidth().height(132.dp)) {
+                        Box(Modifier.fillMaxWidth().aspectRatio(9f / 16f)) {
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data("file://${album.coverPath}")
@@ -77,13 +78,13 @@ fun FolderBrowserScreen(
                                 contentScale = ContentScale.Crop
                             )
                             if (selected) {
-                                Box(Modifier.matchParentSize().background(Color(0x99000000)))
+                                Box(Modifier.matchParentSize().background(Color(0x55000000)))
                                 Icon(Icons.Default.CheckCircle, null, tint = Color(0xFFE94560), modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp))
                             }
-                            Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), color = Color(0xCC000000)) {
-                                Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
-                                    Text(album.name, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("${album.count} 张", color = Color(0xFFBBBBBB), fontSize = 9.sp)
+                            Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), color = Color(0x88000000)) {
+                                Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(album.name, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                    Text("${album.count}", color = Color(0xFFEFEFEF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

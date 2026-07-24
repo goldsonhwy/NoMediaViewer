@@ -58,7 +58,7 @@ fun BrowseScreen(
 @Composable
 private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, onFavorite:(String)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
     val state = rememberLazyListState()
-    TrackIndex(state.firstVisibleItemIndex, onScrollUp, onScrollDown)
+    TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     LaunchedEffect(state, images) { snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { if (it > 0 && it <= images.size) onViewed(images[it-1].path) } }
     LazyColumn(state = state, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, onFavorite) }
@@ -68,7 +68,7 @@ private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, on
 @Composable
 private fun TwoColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, onFavorite:(String)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
     val state = rememberLazyGridState()
-    TrackIndex(state.firstVisibleItemIndex, onScrollUp, onScrollDown)
+    TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     LaunchedEffect(state, images) { snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { if (it > 0 && it <= images.size) onViewed(images[it-1].path) } }
     LazyVerticalGrid(
         columns = GridCells.Fixed(2), state = state, modifier = Modifier.fillMaxSize(),
@@ -107,7 +107,12 @@ private fun BoxScope.TopOverlay(title: String, remain: Int, total: Int, onBack: 
 }
 
 @Composable
-private fun TrackIndex(index: Int, onUp: () -> Unit, onDown: () -> Unit) {
-    var last by remember { mutableIntStateOf(index) }
-    LaunchedEffect(index) { if (index > last) onUp() else if (index < last) onDown(); last = index }
+private fun TrackScroll(index: Int, offset: Int, onUp: () -> Unit, onDown: () -> Unit) {
+    var lastPacked by remember { mutableLongStateOf(index.toLong() * 1_000_000L + offset) }
+    LaunchedEffect(index, offset) {
+        val now = index.toLong() * 1_000_000L + offset
+        val diff = now - lastPacked
+        if (diff > 18) onUp() else if (diff < -18) onDown()
+        lastPacked = now
+    }
 }
