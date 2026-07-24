@@ -48,7 +48,7 @@ fun FavoritesScreen(
         columns = GridCells.Fixed(columns.coerceIn(1, 6)),
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF8A6500))
+            .background(Color.Black)
             .pointerInput(columns) {
                 detectTransformGestures { _, _, zoom, _ ->
                     val now = System.currentTimeMillis()
@@ -81,6 +81,7 @@ fun FavoritesScreen(
 
 private fun landscapeSpan(columns: Int): Int = when {
     columns <= 1 -> 1
+    columns <= 3 -> columns
     columns <= 5 -> 2
     else -> 3
 }.coerceAtMost(columns)

@@ -3,10 +3,10 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- centered black album/photo icon -->
-    <path android:fillColor="#000000" android:pathData="M25,29h58c3,0 5,2 5,5v42c0,3 -2,5 -5,5H25c-3,0 -5,-2 -5,-5V34c0,-3 2,-5 5,-5z"/>
-    <path android:fillColor="#FFB000" android:pathData="M29,39h50v30H29z"/>
-    <path android:fillColor="#000000" android:pathData="M33,66l12,-14l9,10l8,-8l14,15H33z"/>
-    <path android:fillColor="#000000" android:pathData="M66,44a5,5 0,1 0,0.1 0z"/>
-    <path android:fillColor="#000000" android:fillAlpha="0.42" android:pathData="M31,22h46c3,0 5,2 5,5v3H26v-3c0,-3 2,-5 5,-5z"/>
+    <!-- centered smaller black album/photo icon -->
+    <path android:fillColor="#000000" android:pathData="M31,34h46c3,0 5,2 5,5v34c0,3 -2,5 -5,5H31c-3,0 -5,-2 -5,-5V39c0,-3 2,-5 5,-5z"/>
+    <path android:fillColor="#FFB000" android:pathData="M34,43h40v24H34z"/>
+    <path android:fillColor="#000000" android:pathData="M37,65l9,-11l8,8l7,-7l11,12H37z"/>
+    <path android:fillColor="#000000" android:pathData="M64,47a4,4 0,1 0,0.1 0z"/>
+    <path android:fillColor="#000000" android:fillAlpha="0.42" android:pathData="M36,28h36c2,0 4,2 4,4v3H32v-3c0,-2 2,-4 4,-4z"/>
 </vector>
