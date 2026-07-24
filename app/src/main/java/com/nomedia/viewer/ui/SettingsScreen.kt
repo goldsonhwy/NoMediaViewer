@@ -35,7 +35,7 @@ fun SettingsScreen(
     onColumns: (Int) -> Unit,
     onFavoriteColumns: (Int) -> Unit,
     onAddRoot: (Uri) -> Unit,
-    onAddNetworkFolder: (com.nomedia.viewer.NetworkFolderType, String, String, String, String) -> Unit,
+    onAddNetworkFolder: (com.nomedia.viewer.NetworkFolderType, String, String, String, String, (String) -> Unit) -> Unit,
     onRemoveNetworkFolder: (String) -> Unit,
     onNetworkEnabled: (String, Boolean) -> Unit,
     onProbeNetwork: (com.nomedia.viewer.NetworkFolderType, String, String, String, (com.nomedia.viewer.NetworkProbeResult) -> Unit) -> Unit,
@@ -56,10 +56,48 @@ fun SettingsScreen(
     var probe by remember { mutableStateOf<com.nomedia.viewer.NetworkProbeResult?>(null) }
     var lanIps by remember { mutableStateOf<List<String>>(emptyList()) }
     var netBusy by remember { mutableStateOf(false) }
+    var showNetworkDialog by remember { mutableStateOf(false) }
     var test by remember { mutableStateOf<String?>(null) }
     val addRoot = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { it?.let(onAddRoot) }
     val localPick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) cfg = cfg.copy(localUri = uri.toString(), localPath = resolvePath(uri) ?: uri.toString())
+    }
+
+    if (showNetworkDialog) {
+        AlertDialog(
+            onDismissRequest = { showNetworkDialog = false },
+            confirmButton = {
+                Button(onClick = {
+                    if (netUrl.isNotBlank()) {
+                        netBusy = true
+                        onAddNetworkFolder(netType, netName, netUrl, netUser, netPass) { msg ->
+                            test = msg; netBusy = false
+                            if (msg.startsWith("✅")) { showNetworkDialog = false; netName = ""; netUrl = ""; netUser = ""; netPass = ""; probe = null }
+                        }
+                    }
+                }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text(if (netBusy) "验证中..." else "验证并添加") }
+            },
+            dismissButton = { TextButton(onClick = { showNetworkDialog = false }) { Text("取消") } },
+            title = { Text(if (netType == com.nomedia.viewer.NetworkFolderType.WEBDAV) "添加WebDAV" else "添加Samba") },
+            text = {
+                Column {
+                    Field("显示名称", netName) { netName = it }
+                    Field(if (netType == com.nomedia.viewer.NetworkFolderType.WEBDAV) "地址/IP（自动http/https）" else "IP或smb://地址（自动补全smb://）", netUrl) { netUrl = it }
+                    Field("用户名", netUser) { netUser = it }
+                    Field("密码", netPass) { netPass = it }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { netBusy = true; onProbeNetwork(netType, netUrl, netUser, netPass) { probe = it; netUrl = it.normalizedUrl.ifBlank { netUrl }; test = it.message; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("测试") }
+                        Button(onClick = { netBusy = true; onScanLan { lanIps = it; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("扫IP") }
+                    }
+                    test?.let { Text(it, color = if (it.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp) }
+                    probe?.directories?.take(6)?.forEach { dir -> Text(dir, color = Color(0xFFFFB000), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().clickable { netUrl = dir }.padding(vertical = 2.dp)) }
+                    if (lanIps.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { lanIps.take(3).forEach { ip -> AssistChip(onClick = { netUrl = ip }, label = { Text(ip) }) } }
+                }
+            },
+            containerColor = Color(0xFF111111),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
@@ -88,44 +126,15 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
         Section("网络文件夹") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.WEBDAV, onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV }, label = { Text("WebDAV") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
-                FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.SMB, onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB }, label = { Text("SMB") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
-                FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.FEINIU_NAS, onClick = { netType = com.nomedia.viewer.NetworkFolderType.FEINIU_NAS }, label = { Text("飞牛NAS") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
+                Button(onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加WebDAV") }
+                Button(onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加Samba") }
             }
-            Field("显示名称", netName) { netName = it }
-            Field(when (netType) {
-                com.nomedia.viewer.NetworkFolderType.WEBDAV -> "WebDAV地址或IP"
-                com.nomedia.viewer.NetworkFolderType.FEINIU_NAS -> "飞牛NAS IP或 smb://IP/share"
-                else -> "SMB地址 smb://host/share/path"
-            }, netUrl) { netUrl = it }
-            Field("用户名", netUser) { netUser = it }
-            Field("密码", netPass) { netPass = it }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { netBusy = true; onProbeNetwork(netType, netUrl, netUser, netPass) { probe = it; netUrl = it.normalizedUrl.ifBlank { netUrl }; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text(if (netBusy) "验证中..." else "验证并列目录") }
-                Button(onClick = { netBusy = true; onScanLan { lanIps = it; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("扫描局域网") }
-            }
-            probe?.let { pr ->
-                Text(pr.message, color = if (pr.ok) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp)
-                pr.directories.take(8).forEach { dir ->
-                    Text(dir, color = Color(0xFFFFB000), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().clickable { netUrl = dir }.padding(vertical = 2.dp))
-                }
-            }
-            if (lanIps.isNotEmpty()) {
-                Text("发现设备：", color = Color.White, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { lanIps.take(4).forEach { ip -> AssistChip(onClick = { netUrl = ip }, label = { Text(ip) }) } }
-            }
-            Button(onClick = {
-                if (netUrl.isNotBlank()) {
-                    onAddNetworkFolder(netType, netName, netUrl, netUser, netPass)
-                    netName = ""; netUrl = ""; netUser = ""; netPass = ""; probe = null
-                }
-            }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加当前网络文件夹") }
             Spacer(Modifier.height(8.dp))
             networkFolders.forEach { nf ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)), shape = RoundedCornerShape(10.dp)) {
                     Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("${nf.type.name} · ${nf.name}", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("${if (nf.type == com.nomedia.viewer.NetworkFolderType.WEBDAV) "WebDAV" else "Samba"} · ${nf.name}", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(nf.url, color = Color(0xFFB0B0B0), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Switch(checked = nf.enabled, onCheckedChange = { onNetworkEnabled(nf.id, it) })

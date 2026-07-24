@@ -193,7 +193,7 @@ class MainActivity : ComponentActivity() {
                                 onColumns = { vm.setColumns(it) },
                                 onFavoriteColumns = { vm.setFavoriteColumns(it) },
                                 onAddRoot = { vm.addRoot(it) },
-                                onAddNetworkFolder = { type, name, url, user, pass -> vm.addNetworkFolder(type, name, url, user, pass) },
+                                onAddNetworkFolder = { type, name, url, user, pass, cb -> vm.addNetworkFolderValidated(type, name, url, user, pass, cb) },
                                 onRemoveNetworkFolder = { vm.removeNetworkFolder(it) },
                                 onNetworkEnabled = { id, en -> vm.setNetworkFolderEnabled(id, en) },
                                 onProbeNetwork = { type, url, user, pass, cb -> vm.probeNetworkFolder(type, url, user, pass, cb) },

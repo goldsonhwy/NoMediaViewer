@@ -55,6 +55,15 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
 
     fun addRoot(uri: Uri) { val r = repo.addRoot(uri); reloadBasics(); rootsSignature = ""; _state.value = _state.value.copy(message = if (r == null) "无法解析该目录路径" else "已添加：${r.name}"); scanAlbums(true) }
     fun addNetworkFolder(type: NetworkFolderType, name: String, url: String, user: String, pass: String) { repo.addNetworkFolder(type, name, url, user, pass); reloadBasics(); rootsSignature = ""; _state.value = _state.value.copy(message = "已添加网络文件夹：${name.ifBlank { url }}"); scanAlbums(true) }
+    fun addNetworkFolderValidated(type: NetworkFolderType, name: String, url: String, user: String, pass: String, cb: (String) -> Unit) = viewModelScope.launch {
+        val pr = network.probe(type, url, user, pass)
+        if (pr.ok) {
+            val finalUrl = pr.normalizedUrl.ifBlank { url }
+            repo.addNetworkFolder(type, name.ifBlank { finalUrl }, finalUrl, user, pass)
+            reloadBasics(); rootsSignature = ""; scanAlbums(true)
+            cb("✅ 已验证并添加：${name.ifBlank { finalUrl }}")
+        } else cb(pr.message)
+    }
     fun removeNetworkFolder(id: String) { repo.removeNetworkFolder(id); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun setNetworkFolderEnabled(id: String, enabled: Boolean) { repo.setNetworkFolderEnabled(id, enabled); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun probeNetworkFolder(type: NetworkFolderType, url: String, user: String, pass: String, cb: (NetworkProbeResult) -> Unit) = viewModelScope.launch { cb(network.probe(type, url, user, pass)) }
