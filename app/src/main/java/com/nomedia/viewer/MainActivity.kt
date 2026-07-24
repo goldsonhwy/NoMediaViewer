@@ -19,8 +19,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Folder
@@ -33,8 +32,12 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nomedia.viewer.ui.*
@@ -56,7 +59,12 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme(primary = AccentBlue, secondary = AccentGold, background = DarkBackground, surface = DarkSurface, onBackground = TextPrimary, onSurface = TextPrimary)) {
                 val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(repo, storage))
                 val state by vm.state.collectAsState()
-                LaunchedEffect(Unit) { checkPermissions() }
+                var showSplash by remember { mutableStateOf(true) }
+                LaunchedEffect(Unit) {
+                    checkPermissions()
+                    delay(520)
+                    showSplash = false
+                }
 
                 BackHandler(enabled = state.currentTab == 0) {
                     vm.setTab(1)
@@ -73,7 +81,8 @@ class MainActivity : ComponentActivity() {
                     TabItem("收藏", Icons.Default.Favorite, Icons.Outlined.FavoriteBorder),
                     TabItem("设置", Icons.Default.Settings, Icons.Outlined.Settings)
                 )
-                Scaffold(
+                Box {
+                    Scaffold(
                     containerColor = DarkBackground,
                     bottomBar = {
                         AnimatedVisibility(
@@ -104,6 +113,7 @@ class MainActivity : ComponentActivity() {
                                 columns = state.columns,
                                 isFavorite = { vm.isFavorite(it) },
                                 onFavorite = { vm.toggleFavorite(it) },
+                                onOpenFull = { vm.openFullscreen(it) },
                                 onViewed = { vm.recordViewed(it) },
                                 onBack = { vm.setTab(1) },
                                 onScrollUp = { vm.setBottomVisible(false) },
@@ -135,8 +145,23 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                AnimatedVisibility(
+                    visible = showSplash,
+                    exit = fadeOut(animationSpec = tween(160))
+                ) {
+                    Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
+                        Surface(Modifier.matchParentSize(), color = DarkBackground) {}
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color(0xFFE94560), modifier = Modifier.padding(bottom = 14.dp))
+                            Text("涩图品鉴", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.padding(5.dp))
+                            Text("正在进入…", color = Color(0xFFBDBDBD), fontSize = 12.sp)
+                        }
+                    }
+                }
             }
         }
+    }
     }
 
     private fun checkPermissions() {
