@@ -27,12 +27,15 @@ import com.nomedia.viewer.StorageType
 @Composable
 fun SettingsScreen(
     roots: List<RootFolder>,
+    networkFolders: List<com.nomedia.viewer.NetworkFolder>,
     storageConfig: StorageConfig,
     columns: Int,
     favoriteColumns: Int,
     onColumns: (Int) -> Unit,
     onFavoriteColumns: (Int) -> Unit,
     onAddRoot: (Uri) -> Unit,
+    onAddNetworkFolder: (com.nomedia.viewer.NetworkFolderType, String, String, String, String) -> Unit,
+    onRemoveNetworkFolder: (String) -> Unit,
     onRootEnabled: (String, Boolean) -> Unit,
     onRemoveRoot: (String) -> Unit,
     resolvePath: (Uri) -> String?,
@@ -41,6 +44,11 @@ fun SettingsScreen(
     onTestWebDav: (String, String, String, (String) -> Unit) -> Unit
 ) {
     var cfg by remember(storageConfig) { mutableStateOf(storageConfig) }
+    var netType by remember { mutableStateOf(com.nomedia.viewer.NetworkFolderType.WEBDAV) }
+    var netName by remember { mutableStateOf("") }
+    var netUrl by remember { mutableStateOf("") }
+    var netUser by remember { mutableStateOf("") }
+    var netPass by remember { mutableStateOf("") }
     var test by remember { mutableStateOf<String?>(null) }
     val addRoot = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { it?.let(onAddRoot) }
     val localPick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -66,6 +74,35 @@ fun SettingsScreen(
                         }
                         Switch(checked = r.enabled, onCheckedChange = { onRootEnabled(r.uri, it) })
                         IconButton(onClick = { onRemoveRoot(r.uri) }) { Icon(Icons.Default.Delete, null, tint = Color(0x99FFB000)) }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Section("网络文件夹") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.WEBDAV, onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV }, label = { Text("WebDAV") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
+                FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.SMB, onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB }, label = { Text("SMB") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
+            }
+            Field("显示名称", netName) { netName = it }
+            Field(if (netType == com.nomedia.viewer.NetworkFolderType.WEBDAV) "WebDAV地址" else "SMB地址 smb://host/share/path", netUrl) { netUrl = it }
+            Field("用户名", netUser) { netUser = it }
+            Field("密码", netPass) { netPass = it }
+            Button(onClick = {
+                if (netUrl.isNotBlank()) {
+                    onAddNetworkFolder(netType, netName, netUrl, netUser, netPass)
+                    netName = ""; netUrl = ""; netUser = ""; netPass = ""
+                }
+            }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加网络文件夹") }
+            Spacer(Modifier.height(8.dp))
+            networkFolders.forEach { nf ->
+                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)), shape = RoundedCornerShape(10.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${nf.type.name} · ${nf.name}", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(nf.url, color = Color(0xFFB0B0B0), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        IconButton(onClick = { onRemoveNetworkFolder(nf.id) }) { Icon(Icons.Default.Delete, null, tint = Color(0x99FFB000)) }
                     }
                 }
             }

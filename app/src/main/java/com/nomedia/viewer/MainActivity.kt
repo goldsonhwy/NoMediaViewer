@@ -57,9 +57,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val repo = AppRepository(applicationContext)
         val storage = StorageManager(applicationContext)
+        val network = NetworkFolderManager(applicationContext)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(primary = AccentBlue, secondary = AccentGold, background = DarkBackground, surface = DarkSurface, onBackground = TextPrimary, onSurface = TextPrimary)) {
-                val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(repo, storage))
+                val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(repo, storage, network))
                 val state by vm.state.collectAsState()
                 var showSplash by remember { mutableStateOf(true) }
                 LaunchedEffect(Unit) {
@@ -185,12 +186,15 @@ class MainActivity : ComponentActivity() {
                             )
                             4 -> SettingsScreen(
                                 roots = state.roots,
+                                networkFolders = state.networkFolders,
                                 storageConfig = state.storageConfig,
                                 columns = state.columns,
                                 favoriteColumns = state.favoriteColumns,
                                 onColumns = { vm.setColumns(it) },
                                 onFavoriteColumns = { vm.setFavoriteColumns(it) },
                                 onAddRoot = { vm.addRoot(it) },
+                                onAddNetworkFolder = { type, name, url, user, pass -> vm.addNetworkFolder(type, name, url, user, pass) },
+                                onRemoveNetworkFolder = { vm.removeNetworkFolder(it) },
                                 onRootEnabled = { uri, en -> vm.setRootEnabled(uri, en) },
                                 onRemoveRoot = { vm.removeRoot(it) },
                                 resolvePath = { vm.pathFromUri(it) },

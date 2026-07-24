@@ -37,6 +37,18 @@ data class StorageConfig(
     val smbPass: String = ""
 )
 
+enum class NetworkFolderType { WEBDAV, SMB }
+
+data class NetworkFolder(
+    val id: String,
+    val type: NetworkFolderType,
+    val name: String,
+    val url: String,
+    val user: String = "",
+    val pass: String = "",
+    val enabled: Boolean = true
+)
+
 data class RootFolder(
     val uri: String,
     val path: String,

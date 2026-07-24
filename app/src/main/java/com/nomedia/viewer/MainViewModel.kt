@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 data class AppState(
     val currentTab: Int = 1,
     val roots: List<RootFolder> = emptyList(),
+    val networkFolders: List<NetworkFolder> = emptyList(),
     val albums: List<FolderAlbum> = emptyList(),
     val selectedAlbumPaths: Set<String> = emptySet(),
     val browsingTitle: String = "",
@@ -31,7 +32,7 @@ data class AppState(
     val fullscreenImage: ImageFile? = null
 )
 
-class MainViewModel(private val repo: AppRepository, private val storage: StorageManager) : ViewModel() {
+class MainViewModel(private val repo: AppRepository, private val storage: StorageManager, private val network: NetworkFolderManager) : ViewModel() {
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
     private var scanJob: Job? = null
@@ -42,7 +43,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
 
     fun reloadBasics() {
         _state.value = _state.value.copy(
-            roots = repo.roots(), favorites = repo.favorites(), viewed = repo.viewed(),
+            roots = repo.roots(), networkFolders = repo.networkFolders(), favorites = repo.favorites(), viewed = repo.viewed(),
             columns = repo.columns(), favoriteColumns = repo.favoriteColumns(), storageConfig = repo.storageConfig()
         )
     }
@@ -53,21 +54,24 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     }
 
     fun addRoot(uri: Uri) { val r = repo.addRoot(uri); reloadBasics(); rootsSignature = ""; _state.value = _state.value.copy(message = if (r == null) "无法解析该目录路径" else "已添加：${r.name}"); scanAlbums(true) }
+    fun addNetworkFolder(type: NetworkFolderType, name: String, url: String, user: String, pass: String) { repo.addNetworkFolder(type, name, url, user, pass); reloadBasics(); rootsSignature = ""; _state.value = _state.value.copy(message = "已添加网络文件夹：${name.ifBlank { url }}"); scanAlbums(true) }
+    fun removeNetworkFolder(id: String) { repo.removeNetworkFolder(id); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun removeRoot(uri: String) { repo.removeRoot(uri); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun setRootEnabled(uri: String, enabled: Boolean) { repo.setRootEnabled(uri, enabled); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
 
     fun scanAlbums(force: Boolean = false) {
         val roots = repo.roots()
-        val sig = roots.filter { it.enabled }.joinToString("|") { it.path }
+        val sig = roots.filter { it.enabled }.joinToString("|") { it.path } + "||" + repo.networkFolders().filter { it.enabled }.joinToString("|") { it.id + it.url }
         if (!force && sig == rootsSignature && _state.value.albums.isNotEmpty()) return
         scanJob?.cancel()
         scanJob = viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, message = null, roots = roots, viewed = repo.viewed())
-            if (roots.none { it.enabled }) {
-                _state.value = _state.value.copy(loading = false, albums = emptyList(), message = if (roots.isEmpty()) "请先在设置中添加手机文件夹" else "请启用至少一个根目录")
+            val nets = repo.networkFolders()
+            _state.value = _state.value.copy(loading = true, message = null, roots = roots, networkFolders = nets, viewed = repo.viewed())
+            if (roots.none { it.enabled } && nets.none { it.enabled }) {
+                _state.value = _state.value.copy(loading = false, albums = emptyList(), message = if (roots.isEmpty() && nets.isEmpty()) "请先在设置中添加手机文件夹或网络文件夹" else "请启用至少一个目录")
                 return@launch
             }
-            val albums = repo.scanAlbums()
+            val albums = repo.scanAlbums(network)
             rootsSignature = sig
             _state.value = _state.value.copy(loading = false, albums = albums, viewed = repo.viewed(), message = if (albums.isEmpty()) "没有扫描到含图片的子目录" else null)
         }
@@ -162,7 +166,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     }
     fun closeFullscreen() { _state.value = _state.value.copy(fullscreenImage = null) }
 
-    class Factory(private val repo: AppRepository, private val storage: StorageManager) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(repo, storage) as T
+    class Factory(private val repo: AppRepository, private val storage: StorageManager, private val network: NetworkFolderManager) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(repo, storage, network) as T
     }
 }

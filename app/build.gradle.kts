@@ -11,8 +11,8 @@ android {
         applicationId = "com.nomedia.viewer"
         minSdk = 26
         targetSdk = 34
-        versionCode = 100
-        versionName = "1.0"
+        versionCode = 110
+        versionName = "1.1"
         multiDexEnabled = true
     }
 
@@ -60,4 +60,7 @@ dependencies {
 
     // DocumentFile for SAF
     implementation("androidx.documentfile:documentfile:1.0.1")
+
+    // SMB/Samba client
+    implementation("com.hierynomus:smbj:0.13.0")
 }

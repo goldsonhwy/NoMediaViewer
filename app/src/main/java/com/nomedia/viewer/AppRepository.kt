@@ -33,9 +33,28 @@ class AppRepository(private val context: Context) {
 
     fun enabledRootPaths(): List<String> = roots().filter { it.enabled }.map { it.path }
 
-    fun scanAlbums(): List<FolderAlbum> {
+    fun networkFolders(): List<NetworkFolder> = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).mapNotNull { raw ->
+        val p = raw.split("\u001f", limit = 7)
+        if (p.size < 7) null else NetworkFolder(p[0], runCatching { NetworkFolderType.valueOf(p[1]) }.getOrDefault(NetworkFolderType.WEBDAV), p[2], p[3], p[4], p[5], p[6].toBoolean())
+    }
+    fun addNetworkFolder(type: NetworkFolderType, name: String, url: String, user: String, pass: String) {
+        val id = "${type.name}_${url.hashCode()}_${System.currentTimeMillis()}"
+        val set = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).toMutableSet()
+        set.add(listOf(id, type.name, name.ifBlank { url }, url, user, pass, "true").joinToString("\u001f"))
+        prefs.edit().putStringSet("network_roots", set).apply()
+    }
+    fun removeNetworkFolder(id: String) { prefs.edit().putStringSet("network_roots", (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).filterNot { it.startsWith("$id\u001f") }.toSet()).apply() }
+
+    fun scanAlbums(network: NetworkFolderManager? = null): List<FolderAlbum> {
         val grouped = mutableMapOf<String, MutableList<ImageFile>>()
         enabledRootPaths().forEach { root -> scanDir(File(root), grouped, 0) }
+        networkFolders().filter { it.enabled }.forEach { nf ->
+            val cachedPaths = network?.let { runCatching { kotlinx.coroutines.runBlocking { it.scan(nf) } }.getOrDefault(emptyList()) } ?: emptyList()
+            cachedPaths.forEach { p ->
+                val img = toImageFile(File(p))
+                grouped.getOrPut(img.parentPath) { mutableListOf() }.add(img)
+            }
+        }
         return grouped.values.mapNotNull { list ->
             val sorted = list.sortedByDescending { it.lastModified }
             val first = sorted.firstOrNull() ?: return@mapNotNull null
