@@ -72,7 +72,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showNetworkDialog = false },
             confirmButton = {
-                Button(onClick = {
+                Button(shape = RoundedCornerShape(8.dp), onClick = {
                     if (netUrl.isNotBlank()) {
                         netBusy = true
                         val edit = editingNet
@@ -85,7 +85,7 @@ fun SettingsScreen(
                     }
                 }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text(if (netBusy) "验证中..." else "验证并添加") }
             },
-            dismissButton = { TextButton(onClick = { showNetworkDialog = false; editingNet = null }) { Text("取消") } },
+            dismissButton = { TextButton(shape = RoundedCornerShape(8.dp), onClick = { showNetworkDialog = false; editingNet = null }) { Text("取消") } },
             title = { Text(if (netType == com.nomedia.viewer.NetworkFolderType.WEBDAV) "添加WebDAV" else "添加Samba") },
             text = {
                 Column {
@@ -94,12 +94,12 @@ fun SettingsScreen(
                     Field("用户名", netUser) { netUser = it }
                     Field("密码", netPass) { netPass = it }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { netBusy = true; onProbeNetwork(netType, netUrl, netUser, netPass) { probe = it; netUrl = it.normalizedUrl.ifBlank { netUrl }; test = it.message; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("测试") }
-                        Button(onClick = { netBusy = true; onScanLan { lanIps = it; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("扫IP") }
+                        Button(shape = RoundedCornerShape(8.dp), onClick = { netBusy = true; onProbeNetwork(netType, netUrl, netUser, netPass) { probe = it; netUrl = it.normalizedUrl.ifBlank { netUrl }; test = it.message; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("测试") }
+                        Button(shape = RoundedCornerShape(8.dp), onClick = { netBusy = true; onScanLan { lanIps = it; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("扫IP") }
                     }
                     test?.let { Text(it, color = if (it.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp) }
                     probe?.directories?.take(6)?.forEach { dir -> Text(dir, color = Color(0xFFFFB000), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().clickable { netUrl = dir }.padding(vertical = 2.dp)) }
-                    if (lanIps.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { lanIps.take(3).forEach { ip -> AssistChip(onClick = { netUrl = ip }, label = { Text(ip) }) } }
+                    if (lanIps.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { lanIps.take(3).forEach { ip -> AssistChip(shape = RoundedCornerShape(8.dp), onClick = { netUrl = ip }, label = { Text(ip) }) } }
                 }
             },
             containerColor = Color(0xFF111111),
@@ -111,12 +111,12 @@ fun SettingsScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Text("设置", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onExportLogs, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
+        Button(shape = RoundedCornerShape(8.dp), onClick = onExportLogs, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
             Icon(Icons.Default.BugReport, null); Spacer(Modifier.width(8.dp)); Text("导出日志/崩溃信息")
         }
         Spacer(Modifier.height(16.dp))
         Section("扫描根目录") {
-            Button(onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
+            Button(shape = RoundedCornerShape(8.dp), onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
                 Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text("添加手机文件夹")
             }
             Spacer(Modifier.height(10.dp))
@@ -138,12 +138,12 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
         Section("网络文件夹") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加WebDAV") }
-                Button(onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加Samba") }
+                Button(shape = RoundedCornerShape(8.dp), onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加WebDAV") }
+                Button(shape = RoundedCornerShape(8.dp), onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加Samba") }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onRefreshNetwork, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("刷新网络") }
-                Button(onClick = onClearNetworkRecovery, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("重置网络") }
+                Button(shape = RoundedCornerShape(8.dp), onClick = onRefreshNetwork, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("刷新网络") }
+                Button(shape = RoundedCornerShape(8.dp), onClick = onClearNetworkRecovery, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("重置网络") }
             }
             Spacer(Modifier.height(8.dp))
             networkFolders.forEach { nf ->
@@ -164,7 +164,7 @@ fun SettingsScreen(
         Section("浏览布局") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (1..6).forEach { n ->
-                    FilterChip(
+                    FilterChip(shape = RoundedCornerShape(8.dp), 
                         selected = columns == n,
                         onClick = { onColumns(n) },
                         label = { Text("${n}列") },
@@ -188,7 +188,7 @@ fun SettingsScreen(
         Section("收藏布局") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (1..6).forEach { n ->
-                    FilterChip(
+                    FilterChip(shape = RoundedCornerShape(8.dp), 
                         selected = favoriteColumns == n,
                         onClick = { onFavoriteColumns(n) },
                         label = { Text("${n}列") },
@@ -214,7 +214,7 @@ fun SettingsScreen(
             if (cfg.enabled) {
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("本地文件夹", color = Color.White, modifier = Modifier.weight(1f)); Switch(cfg.localEnabled, { cfg = cfg.copy(localEnabled = it) }) }
                 if (cfg.localEnabled) {
-                    Button(onClick = { localPick.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.localPath.isBlank()) "选择本地存储目录" else "已选择本地目录") }
+                    Button(shape = RoundedCornerShape(8.dp), onClick = { localPick.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.localPath.isBlank()) "选择本地存储目录" else "已选择本地目录") }
                     if (cfg.localPath.isNotBlank()) Text(cfg.localPath, color = Color(0xFFB0B0B0), fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(10.dp))
@@ -223,7 +223,7 @@ fun SettingsScreen(
                     Field("WebDAV地址", cfg.webdavUrl) { cfg = cfg.copy(webdavUrl = it) }
                     Field("用户名", cfg.webdavUser) { cfg = cfg.copy(webdavUser = it) }
                     Field("密码", cfg.webdavPass) { cfg = cfg.copy(webdavPass = it) }
-                    Button(onClick = { test = "测试中..."; onTestWebDav(cfg.webdavUrl, cfg.webdavUser, cfg.webdavPass) { test = it } }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.NetworkCheck, null); Spacer(Modifier.width(8.dp)); Text("自动测试http/https") }
+                    Button(shape = RoundedCornerShape(8.dp), onClick = { test = "测试中..."; onTestWebDav(cfg.webdavUrl, cfg.webdavUser, cfg.webdavPass) { test = it } }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Icon(Icons.Default.NetworkCheck, null); Spacer(Modifier.width(8.dp)); Text("自动测试http/https") }
                     test?.let { Text(it, color = if (it.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp) }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -235,7 +235,7 @@ fun SettingsScreen(
                     Text("SMB为实验性；当前会复制到本地 SMB 备份目录", color = Color(0xFFB0B0B0), fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(10.dp))
-                Button(onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("保存存储设置") }
+                Button(shape = RoundedCornerShape(8.dp), onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("保存存储设置") }
             }
         }
         Spacer(Modifier.height(50.dp))

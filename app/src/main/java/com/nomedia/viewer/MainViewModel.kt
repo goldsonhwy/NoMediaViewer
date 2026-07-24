@@ -79,8 +79,15 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun scanLan(cb: (List<String>) -> Unit) = viewModelScope.launch { cb(network.scanLanIps()) }
     fun removeRoot(uri: String) { repo.removeRoot(uri); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun setRootEnabled(uri: String, enabled: Boolean) { repo.setRootEnabled(uri, enabled); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
-    fun refreshWithNetwork() { rootsSignature = ""; scanAlbums(true, includeNetwork = true) }
-    fun clearNetworkRecovery() { network.clearCache(); repo.clearNetworkFolders(); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
+    fun refreshWithNetwork() = viewModelScope.launch {
+        val nodes = repo.networkFolders().filter { it.enabled }
+        _state.value = _state.value.copy(loading = true, message = "正在检查网络节点…")
+        var ok = 0
+        nodes.forEach { n -> if (network.probe(n.type, n.url, n.user, n.pass).ok) ok++ }
+        reloadBasics()
+        _state.value = _state.value.copy(loading = false, message = "网络检查完成：$ok/${nodes.size} 可连接。需要读取图片时再进入对应目录。")
+    }
+    fun clearNetworkRecovery() { network.clearCache(); repo.clearNetworkFolders(); reloadBasics(); rootsSignature = ""; _state.value = _state.value.copy(message = "已重置网络节点和缓存") }
 
     fun scanAlbums(force: Boolean = false, includeNetwork: Boolean = false) {
         val roots = repo.roots()
