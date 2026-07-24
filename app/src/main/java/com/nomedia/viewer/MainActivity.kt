@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val repository = ImageRepository(applicationContext)
-        val folderManager = FolderTreeManager(applicationContext)
+        val folderManager = FolderManager(applicationContext)
         val storageManager = StorageManager(applicationContext)
 
         setContent {
@@ -82,8 +82,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val tabs = listOf(
-                    TabItem2("浏览", Icons.Default.PhotoLibrary, Icons.Outlined.PhotoLibrary),
-                    TabItem2("文件夹", Icons.Default.CreateNewFolder, Icons.Outlined.CreateNewFolder),
+                    TabItem2("浏览", Icons.Default.PhotoLibrary, Icons.Outlined.Image),
+                    TabItem2("文件夹", Icons.Default.Folder, Icons.Outlined.Folder),
                     TabItem2("收藏", Icons.Default.Favorite, Icons.Outlined.FavoriteBorder),
                     TabItem2("设置", Icons.Default.Settings, Icons.Outlined.Settings)
                 )
@@ -138,10 +138,9 @@ class MainActivity : ComponentActivity() {
                             )
 
                             1 -> FolderPickerScreen(
-                                folderTrees = state.folderTrees,
-                                importedPaths = viewModel.getImportedPaths(),
-                                onImportFolders = { viewModel.importFolders(it) },
-                                onRemoveRootFolder = { uri -> viewModel.removeRootFolder(uri) }
+                                folders = state.folders,
+                                onToggleFolder = { uriStr, enabled -> viewModel.toggleFolder(uriStr, enabled) },
+                                onRemoveFolder = { uriStr -> viewModel.removeFolder(uriStr) }
                             )
 
                             2 -> FavoritesScreen(
@@ -155,7 +154,7 @@ class MainActivity : ComponentActivity() {
                                 storageConfig = viewModel.getStorageConfig(),
                                 columnCount = state.columnCount,
                                 onColumnCountChange = { viewModel.setColumnCount(it) },
-                                onFolderAdded = { uri -> viewModel.addRootFolder(uri) },
+                                onFolderAdded = { uri -> viewModel.addFolder(uri) },
                                 onSave = { viewModel.saveStorageConfig(it) }
                             )
                         }

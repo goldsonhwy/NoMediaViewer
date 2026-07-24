@@ -19,14 +19,14 @@ data class BrowseState(
     val currentTab: Int = 0,
     val columnCount: Int = 1,
     val showBottomBar: Boolean = true,
-    val folderTrees: Map<String, FolderNode> = emptyMap(), // rootUri -> tree
+    val folders: List<FolderManager.ManagedFolder> = emptyList(),
     val storageConfig: StorageConfig = StorageConfig(),
     val fullscreenImage: ImageFile? = null
 )
 
 class MainViewModel(
     private val repository: ImageRepository,
-    private val folderManager: FolderTreeManager,
+    private val folderManager: FolderManager,
     private val storageManager: StorageManager
 ) : ViewModel() {
 
@@ -37,9 +37,9 @@ class MainViewModel(
         _state.value = _state.value.copy(
             isLoading = false,
             columnCount = folderManager.getColumnCount(),
-            storageConfig = storageManager.getConfig()
+            storageConfig = storageManager.getConfig(),
+            folders = folderManager.getFolders()
         )
-        refreshFolderTrees()
     }
 
     // ===== Image Scanning =====
@@ -48,20 +48,16 @@ class MainViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
-                if (folderManager.getRootUris().isEmpty()) {
+                val enabledPaths = folderManager.getEnabledPaths()
+                if (enabledPaths.isEmpty()) {
                     _state.value = _state.value.copy(
-                        isLoading = false, error = "请先在「文件夹」页面添加要扫描的目录"
-                    )
-                    return@launch
-                }
-                if (folderManager.getCheckedRootUris().isEmpty()) {
-                    _state.value = _state.value.copy(
-                        isLoading = false, error = "请勾选要扫描的文件夹（勾选母文件夹即可）"
+                        isLoading = false,
+                        error = if (folderManager.hasFolders()) "请在「文件夹」页面启用要扫描的目录" else "请先在「设置」中添加手机文件夹"
                     )
                     return@launch
                 }
 
-                val allImages = repository.scanCheckedFolders(folderManager)
+                val allImages = repository.scanFolders(enabledPaths)
                 val viewed = repository.getViewedImages()
                 val favorites = repository.getFavorites()
                 val unviewed = allImages.filter { it.uri !in viewed }
@@ -112,37 +108,38 @@ class MainViewModel(
     fun isFavorite(uri: String): Boolean = repository.isFavorite(uri)
     fun getFavoriteImages(): List<ImageFile> = repository.getFavoriteImages()
 
-    // ===== Import Flow =====
+    // ===== Folder Management =====
 
-    fun getImportedPaths(): Set<String> {
-        val paths = mutableSetOf<String>()
-        for (rootUri in folderManager.getRootUris()) {
-            for (relPath in folderManager.getCheckedFolders(rootUri)) {
-                paths.add("$rootUri|$relPath")
-            }
-        }
-        return paths
-    }
-
-    fun importFolders(folders: List<Pair<String, String>>) {
-        // First, clear all checked states for all roots
-        for (rootUri in folderManager.getRootUris()) {
-            val checked = folderManager.getCheckedFolders(rootUri).toSet()
-            for (relPath in checked) {
-                folderManager.setFolderChecked(rootUri, relPath, false)
-            }
-        }
-        // Then set the newly selected ones
-        for ((rootUri, relPath) in folders) {
-            folderManager.setFolderChecked(rootUri, relPath, true)
-        }
-        refreshFolderTrees()
+    fun addFolder(uri: Uri) {
+        folderManager.addFolder(uri)
+        refreshFolders()
         loadImages()
     }
 
+    fun removeFolder(uriStr: String) {
+        folderManager.removeFolder(uriStr)
+        refreshFolders()
+        loadImages()
+    }
+
+    fun toggleFolder(uriStr: String, enabled: Boolean) {
+        folderManager.setEnabled(uriStr, enabled)
+        refreshFolders()
+        loadImages()
+    }
+
+    fun refreshFolders() {
+        _state.value = _state.value.copy(folders = folderManager.getFolders())
+    }
+
+    fun parseSafPath(uriStr: String): String? = folderManager.safUriToPath(uriStr)
+
     // ===== Tab & UI =====
 
-    fun setTab(index: Int) { _state.value = _state.value.copy(currentTab = index) }
+    fun setTab(index: Int) {
+        _state.value = _state.value.copy(currentTab = index)
+        if (index == 1) refreshFolders()
+    }
 
     fun setShowBottomBar(show: Boolean) {
         _state.value = _state.value.copy(showBottomBar = show)
@@ -152,39 +149,6 @@ class MainViewModel(
         folderManager.setColumnCount(n)
         _state.value = _state.value.copy(columnCount = n)
     }
-
-    // ===== Folder Tree =====
-
-    fun refreshFolderTrees() {
-        viewModelScope.launch {
-            val trees = mutableMapOf<String, FolderNode>()
-            for (uri in folderManager.getRootUriList()) {
-                val node = folderManager.getFolderTree(uri)
-                if (node != null) trees[uri.toString()] = node
-            }
-            _state.value = _state.value.copy(folderTrees = trees)
-        }
-    }
-
-    fun onFolderChecked(rootUri: String, relativePath: String, checked: Boolean) {
-        folderManager.setFolderChecked(rootUri, relativePath, checked)
-        refreshFolderTrees()
-        loadImages()
-    }
-
-    fun addRootFolder(uri: Uri) {
-        folderManager.addRootFolder(uri)
-        refreshFolderTrees()
-        loadImages()
-    }
-
-    fun removeRootFolder(uri: Uri) {
-        folderManager.removeRootFolder(uri)
-        refreshFolderTrees()
-        loadImages()
-    }
-
-    fun getRootUriList(): List<Uri> = folderManager.getRootUriList()
 
     // ===== Storage =====
 
@@ -203,7 +167,7 @@ class MainViewModel(
 
     class Factory(
         private val repository: ImageRepository,
-        private val folderManager: FolderTreeManager,
+        private val folderManager: FolderManager,
         private val storageManager: StorageManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

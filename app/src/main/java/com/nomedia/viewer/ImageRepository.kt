@@ -7,7 +7,6 @@ import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
 data class ImageFile(
     val path: String,
@@ -22,67 +21,44 @@ class ImageRepository(private val context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("nomedia_viewer", Context.MODE_PRIVATE)
 
-    // ===== Scan only checked folders =====
+    // ===== Scan using File API (reliable, works with MANAGE_EXTERNAL_STORAGE) =====
 
-    suspend fun scanCheckedFolders(folderManager: FolderTreeManager): List<ImageFile> = withContext(Dispatchers.IO) {
+    suspend fun scanFolders(folderPaths: List<String>): List<ImageFile> = withContext(Dispatchers.IO) {
         val images = mutableListOf<ImageFile>()
         val extensions = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif")
 
-        for (rootUriStr in folderManager.getRootUris()) {
-            try {
-                val rootUri = Uri.parse(rootUriStr)
-                val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: continue
-                val checkedPaths = folderManager.getCheckedFolders(rootUriStr)
-
-                for (checkedPath in checkedPaths) {
-                    val targetDoc = if (checkedPath.isEmpty()) {
-                        rootDoc
-                    } else {
-                        navigateToPath(rootDoc, checkedPath)
-                    }
-                    if (targetDoc != null) {
-                        scanDocumentFiles(targetDoc, extensions, images)
-                    }
-                }
-            } catch (_: Exception) {}
+        for (basePath in folderPaths) {
+            val baseDir = File(basePath)
+            if (!baseDir.exists() || !baseDir.canRead()) continue
+            scanFileRecursive(baseDir, extensions, images, depth = 0)
         }
 
         images.sortedByDescending { it.lastModified }
     }
 
-    private fun navigateToPath(root: DocumentFile, path: String): DocumentFile? {
-        var current = root
-        val parts = path.split("/")
-        for (part in parts) {
-            if (part.isEmpty()) continue
-            val children = current.listFiles() ?: return null
-            current = children.find { it.isDirectory && it.name == part } ?: return null
-        }
-        return current
-    }
-
-    private fun scanDocumentFiles(dir: DocumentFile, extensions: Set<String>, result: MutableList<ImageFile>, depth: Int = 0) {
-        if (depth > 10) return
+    private fun scanFileRecursive(dir: File, extensions: Set<String>, result: MutableList<ImageFile>, depth: Int) {
+        if (depth > 12) return // safety limit
         try {
             val files = dir.listFiles() ?: return
             for (file in files) {
                 if (file.isDirectory) {
-                    scanDocumentFiles(file, extensions, result, depth + 1)
+                    scanFileRecursive(file, extensions, result, depth + 1)
                 } else if (file.isFile) {
-                    val name = file.name ?: continue
-                    val ext = name.substringAfterLast(".", "").lowercase()
+                    val ext = file.extension.lowercase()
                     if (ext in extensions) {
                         result.add(ImageFile(
-                            path = file.uri.toString(),
-                            uri = file.uri.toString(),
-                            name = name,
+                            path = file.absolutePath,
+                            uri = file.absolutePath,
+                            name = file.name,
                             size = file.length(),
                             lastModified = file.lastModified()
                         ))
                     }
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: SecurityException) {
+            // Permission denied directory - skip silently
+        }
     }
 
     // ===== Favorites =====
@@ -101,13 +77,11 @@ class ImageRepository(private val context: Context) {
     fun isFavorite(uri: String): Boolean = uri in getFavorites()
 
     fun getFavoriteImages(): List<ImageFile> {
-        return getFavorites().mapNotNull { uriStr ->
+        return getFavorites().mapNotNull { path ->
             try {
-                val uri = Uri.parse(uriStr)
-                val docFile = DocumentFile.fromSingleUri(context, uri)
-                    ?: DocumentFile.fromFile(File(uriStr))
-                if (docFile != null && docFile.exists()) {
-                    ImageFile(path = uriStr, uri = uriStr, name = docFile.name ?: "Unknown", size = docFile.length(), lastModified = docFile.lastModified())
+                val file = File(path)
+                if (file.exists()) {
+                    ImageFile(path = path, uri = path, name = file.name, size = file.length(), lastModified = file.lastModified())
                 } else null
             } catch (_: Exception) { null }
         }

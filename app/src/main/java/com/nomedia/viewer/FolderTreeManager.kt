@@ -94,9 +94,18 @@ class FolderTreeManager(private val context: Context) {
 
     suspend fun getFolderTree(rootUri: Uri): FolderNode? = withContext(Dispatchers.IO) {
         try {
-            val docFile = DocumentFile.fromTreeUri(context, rootUri) ?: return@withContext null
-            buildTreeNode(rootUri.toString(), docFile, "", 0)
-        } catch (_: Exception) { null }
+            val docFile = DocumentFile.fromTreeUri(context, rootUri)
+            if (docFile != null) {
+                buildTreeNode(rootUri.toString(), docFile, "", 0)
+            } else {
+                // SAF returned null - try to get name from URI
+                val name = rootUri.lastPathSegment ?: rootUri.toString()
+                FolderNode(uri = rootUri.toString(), name = name, relativePath = "", isChecked = isFolderChecked(rootUri.toString()), children = emptyList(), depth = 0)
+            }
+        } catch (e: Exception) {
+            val name = rootUri.lastPathSegment ?: rootUri.toString()
+            FolderNode(uri = rootUri.toString(), name = "$name (错误: ${e.localizedMessage})", relativePath = "", isChecked = isFolderChecked(rootUri.toString()), children = emptyList(), depth = 0)
+        }
     }
 
     private fun buildTreeNode(rootUri: String, docFile: DocumentFile, relativePath: String, depth: Int): FolderNode? {

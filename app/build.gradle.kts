@@ -11,8 +11,8 @@ android {
         applicationId = "com.nomedia.viewer"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "0.06"
+        versionCode = 8
+        versionName = "0.08"
         multiDexEnabled = true
     }
 
