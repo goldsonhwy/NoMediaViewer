@@ -39,7 +39,7 @@ fun FolderBrowserScreen(
 ) {
     Box(Modifier.fillMaxSize()) {
         when {
-            loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = Color(0xFFFFB000)) }
+            loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(color = Color(0xFFFFB000)); Spacer(Modifier.height(10.dp)); Text("读取中…", color = Color.White) } }
             albums.isEmpty() -> EmptyFolder(message ?: "请先在设置中添加手机文件夹")
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(3),

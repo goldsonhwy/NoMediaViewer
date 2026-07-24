@@ -43,6 +43,13 @@ class AppRepository(private val context: Context) {
         set.add(listOf(id, type.name, name.ifBlank { url }, url, user, pass, "true").joinToString("\u001f"))
         prefs.edit().putStringSet("network_roots", set).apply()
     }
+    fun updateNetworkFolder(id: String, type: NetworkFolderType, name: String, url: String, user: String, pass: String, enabled: Boolean = true) {
+        val updated = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).map { raw ->
+            val p = raw.split("\u001f", limit = 7)
+            if (p.size == 7 && p[0] == id) listOf(id, type.name, name.ifBlank { url }, url, user, pass, enabled.toString()).joinToString("\u001f") else raw
+        }.toSet()
+        prefs.edit().putStringSet("network_roots", updated).apply()
+    }
     fun removeNetworkFolder(id: String) { prefs.edit().putStringSet("network_roots", (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).filterNot { it.startsWith("$id\u001f") }.toSet()).apply() }
     fun setNetworkFolderEnabled(id: String, enabled: Boolean) {
         val updated = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).map { raw ->

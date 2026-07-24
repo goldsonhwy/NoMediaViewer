@@ -64,6 +64,15 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
             cb("✅ 已验证并添加：${name.ifBlank { finalUrl }}")
         } else cb(pr.message)
     }
+    fun updateNetworkFolderValidated(id: String, type: NetworkFolderType, name: String, url: String, user: String, pass: String, enabled: Boolean, cb: (String) -> Unit) = viewModelScope.launch {
+        val pr = network.probe(type, url, user, pass)
+        if (pr.ok) {
+            val finalUrl = pr.normalizedUrl.ifBlank { url }
+            repo.updateNetworkFolder(id, type, name.ifBlank { finalUrl }, finalUrl, user, pass, enabled)
+            reloadBasics(); rootsSignature = ""; scanAlbums(true)
+            cb("✅ 已验证并保存")
+        } else cb(pr.message)
+    }
     fun removeNetworkFolder(id: String) { repo.removeNetworkFolder(id); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun setNetworkFolderEnabled(id: String, enabled: Boolean) { repo.setNetworkFolderEnabled(id, enabled); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun probeNetworkFolder(type: NetworkFolderType, url: String, user: String, pass: String, cb: (NetworkProbeResult) -> Unit) = viewModelScope.launch { cb(network.probe(type, url, user, pass)) }

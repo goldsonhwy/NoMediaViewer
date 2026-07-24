@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import androidx.core.content.FileProvider
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLogger.init(applicationContext)
         val repo = AppRepository(applicationContext)
         val storage = StorageManager(applicationContext)
         val network = NetworkFolderManager(applicationContext)
@@ -194,7 +196,9 @@ class MainActivity : ComponentActivity() {
                                 onFavoriteColumns = { vm.setFavoriteColumns(it) },
                                 onAddRoot = { vm.addRoot(it) },
                                 onAddNetworkFolder = { type, name, url, user, pass, cb -> vm.addNetworkFolderValidated(type, name, url, user, pass, cb) },
+                                onUpdateNetworkFolder = { id, type, name, url, user, pass, enabled, cb -> vm.updateNetworkFolderValidated(id, type, name, url, user, pass, enabled, cb) },
                                 onRemoveNetworkFolder = { vm.removeNetworkFolder(it) },
+                                onExportLogs = { exportLogs() },
                                 onNetworkEnabled = { id, en -> vm.setNetworkFolderEnabled(id, en) },
                                 onProbeNetwork = { type, url, user, pass, cb -> vm.probeNetworkFolder(type, url, user, pass, cb) },
                                 onScanLan = { cb -> vm.scanLan(cb) },
@@ -236,6 +240,18 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    }
+
+    private fun exportLogs() {
+        val file = AppLogger.exportFile(applicationContext)
+        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, "Yellow-gallery 日志文件")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, "导出日志"))
     }
 
     private fun checkPermissions() {

@@ -36,7 +36,9 @@ fun SettingsScreen(
     onFavoriteColumns: (Int) -> Unit,
     onAddRoot: (Uri) -> Unit,
     onAddNetworkFolder: (com.nomedia.viewer.NetworkFolderType, String, String, String, String, (String) -> Unit) -> Unit,
+    onUpdateNetworkFolder: (String, com.nomedia.viewer.NetworkFolderType, String, String, String, String, Boolean, (String) -> Unit) -> Unit,
     onRemoveNetworkFolder: (String) -> Unit,
+    onExportLogs: () -> Unit,
     onNetworkEnabled: (String, Boolean) -> Unit,
     onProbeNetwork: (com.nomedia.viewer.NetworkFolderType, String, String, String, (com.nomedia.viewer.NetworkProbeResult) -> Unit) -> Unit,
     onScanLan: ((List<String>) -> Unit) -> Unit,
@@ -57,6 +59,7 @@ fun SettingsScreen(
     var lanIps by remember { mutableStateOf<List<String>>(emptyList()) }
     var netBusy by remember { mutableStateOf(false) }
     var showNetworkDialog by remember { mutableStateOf(false) }
+    var editingNet by remember { mutableStateOf<com.nomedia.viewer.NetworkFolder?>(null) }
     var test by remember { mutableStateOf<String?>(null) }
     val addRoot = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { it?.let(onAddRoot) }
     val localPick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -70,14 +73,17 @@ fun SettingsScreen(
                 Button(onClick = {
                     if (netUrl.isNotBlank()) {
                         netBusy = true
-                        onAddNetworkFolder(netType, netName, netUrl, netUser, netPass) { msg ->
+                        val edit = editingNet
+                        val done: (String) -> Unit = { msg ->
                             test = msg; netBusy = false
-                            if (msg.startsWith("✅")) { showNetworkDialog = false; netName = ""; netUrl = ""; netUser = ""; netPass = ""; probe = null }
+                            if (msg.startsWith("✅")) { showNetworkDialog = false; editingNet = null; netName = ""; netUrl = ""; netUser = ""; netPass = ""; probe = null }
                         }
+                        if (edit != null) onUpdateNetworkFolder(edit.id, netType, netName, netUrl, netUser, netPass, edit.enabled, done)
+                        else onAddNetworkFolder(netType, netName, netUrl, netUser, netPass, done)
                     }
                 }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text(if (netBusy) "验证中..." else "验证并添加") }
             },
-            dismissButton = { TextButton(onClick = { showNetworkDialog = false }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { showNetworkDialog = false; editingNet = null }) { Text("取消") } },
             title = { Text(if (netType == com.nomedia.viewer.NetworkFolderType.WEBDAV) "添加WebDAV" else "添加Samba") },
             text = {
                 Column {
@@ -102,6 +108,10 @@ fun SettingsScreen(
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Text("设置", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onExportLogs, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
+            Icon(Icons.Default.BugReport, null); Spacer(Modifier.width(8.dp)); Text("导出日志/崩溃信息")
+        }
         Spacer(Modifier.height(16.dp))
         Section("扫描根目录") {
             Button(onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
@@ -138,6 +148,7 @@ fun SettingsScreen(
                             Text(nf.url, color = Color(0xFFB0B0B0), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Switch(checked = nf.enabled, onCheckedChange = { onNetworkEnabled(nf.id, it) })
+                        IconButton(onClick = { editingNet = nf; netType = if (nf.type == com.nomedia.viewer.NetworkFolderType.WEBDAV) com.nomedia.viewer.NetworkFolderType.WEBDAV else com.nomedia.viewer.NetworkFolderType.SMB; netName = nf.name; netUrl = nf.url; netUser = nf.user; netPass = nf.pass; probe = null; test = null; showNetworkDialog = true }) { Icon(Icons.Default.Edit, null, tint = Color(0xFFFFB000)) }
                         IconButton(onClick = { onRemoveNetworkFolder(nf.id) }) { Icon(Icons.Default.Delete, null, tint = Color(0x99FFB000)) }
                     }
                 }
