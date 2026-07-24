@@ -132,15 +132,23 @@ class MainActivity : ComponentActivity() {
                                 onToggleFavorite = { viewModel.toggleFavorite(it) },
                                 onMarkViewed = { viewModel.markAsViewed(it) },
                                 onReset = { viewModel.resetHistory() },
-                                onScanAgain = { viewModel.loadImages() },
+                                onScanAgain = { viewModel.scanFolderGroups() },
                                 onScrollUp = { viewModel.setShowBottomBar(false) },
-                                onScrollDown = { viewModel.setShowBottomBar(true) }
+                                onScrollDown = { viewModel.setShowBottomBar(true) },
+                                onBack = { viewModel.setTab(1) }
                             )
 
-                            1 -> FolderPickerScreen(
-                                folders = state.folders,
-                                onToggleFolder = { uriStr, enabled -> viewModel.toggleFolder(uriStr, enabled) },
-                                onRemoveFolder = { uriStr -> viewModel.removeFolder(uriStr) }
+                            1 -> FolderBrowserScreen(
+                                folderGroups = state.folderGroups,
+                                selectedPaths = state.selectedFolderPaths,
+                                onFolderClick = { path -> viewModel.browseFolder(path) },
+                                onFolderLongClick = { path -> viewModel.toggleFolderSelection(path) },
+                                onMergeBrowse = {
+                                    val paths = state.selectedFolderPaths.toList()
+                                    viewModel.browseMergedFolders(paths)
+                                    viewModel.clearFolderSelection()
+                                },
+                                onClearSelection = { viewModel.clearFolderSelection() }
                             )
 
                             2 -> FavoritesScreen(

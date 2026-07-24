@@ -42,7 +42,8 @@ fun BrowseScreen(
     onReset: () -> Unit,
     onScanAgain: () -> Unit,
     onScrollUp: () -> Unit,
-    onScrollDown: () -> Unit
+    onScrollDown: () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     when {
         images.isEmpty() -> EmptyBrowseScreen(hasTotal = totalCount > 0, onScanAgain = onScanAgain)
@@ -50,13 +51,13 @@ fun BrowseScreen(
             images = images, unviewedCount = unviewedCount, totalCount = totalCount,
             isFavorite = isFavorite, onToggleFavorite = onToggleFavorite,
             onMarkViewed = onMarkViewed, onReset = onReset, onScanAgain = onScanAgain,
-            onScrollUp = onScrollUp, onScrollDown = onScrollDown
+            onScrollUp = onScrollUp, onScrollDown = onScrollDown, onBack = onBack
         )
         else -> SingleColumnBrowseScreen(
             images = images, unviewedCount = unviewedCount, totalCount = totalCount,
             isFavorite = isFavorite, onToggleFavorite = onToggleFavorite,
             onMarkViewed = onMarkViewed, onReset = onReset, onScanAgain = onScanAgain,
-            onScrollUp = onScrollUp, onScrollDown = onScrollDown
+            onScrollUp = onScrollUp, onScrollDown = onScrollDown, onBack = onBack
         )
     }
 }
@@ -85,7 +86,7 @@ private fun SingleColumnBrowseScreen(
     images: List<ImageFile>, unviewedCount: Int, totalCount: Int,
     isFavorite: (String) -> Boolean, onToggleFavorite: (String) -> Unit,
     onMarkViewed: (String) -> Unit, onReset: () -> Unit, onScanAgain: () -> Unit,
-    onScrollUp: () -> Unit, onScrollDown: () -> Unit
+    onScrollUp: () -> Unit, onScrollDown: () -> Unit, onBack: (() -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     TrackScrollDirection(firstVisible = listState.firstVisibleItemIndex, onScrollUp = onScrollUp, onScrollDown = onScrollDown)
@@ -100,7 +101,7 @@ private fun SingleColumnBrowseScreen(
                 ImageItemRow(image = image, isFavorite = isFavorite, onToggleFavorite = onToggleFavorite)
             }
         }
-        BrowseOverlays(unviewedCount = unviewedCount, totalCount = totalCount, onReset = onReset)
+        BrowseOverlays(unviewedCount = unviewedCount, totalCount = totalCount, onReset = onReset, onBack = onBack)
     }
 }
 
@@ -109,7 +110,7 @@ private fun TwoColumnBrowseScreen(
     images: List<ImageFile>, unviewedCount: Int, totalCount: Int,
     isFavorite: (String) -> Boolean, onToggleFavorite: (String) -> Unit,
     onMarkViewed: (String) -> Unit, onReset: () -> Unit, onScanAgain: () -> Unit,
-    onScrollUp: () -> Unit, onScrollDown: () -> Unit
+    onScrollUp: () -> Unit, onScrollDown: () -> Unit, onBack: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
@@ -142,7 +143,7 @@ private fun TwoColumnBrowseScreen(
                 )
             }
         }
-        BrowseOverlays(unviewedCount = unviewedCount, totalCount = totalCount, onReset = onReset)
+        BrowseOverlays(unviewedCount = unviewedCount, totalCount = totalCount, onReset = onReset, onBack = onBack)
     }
 }
 
@@ -181,12 +182,19 @@ private fun TrackScrollDirection(firstVisible: Int, onScrollUp: () -> Unit, onSc
 }
 
 @Composable
-private fun BoxScope.BrowseOverlays(unviewedCount: Int, totalCount: Int, onReset: () -> Unit) {
+private fun BoxScope.BrowseOverlays(unviewedCount: Int, totalCount: Int, onReset: () -> Unit, onBack: (() -> Unit)? = null) {
     // Top bar
     Surface(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter), color = Color(0xCC1A1A2E), shadowElevation = 4.dp) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("NoMedia Viewer", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("$unviewedCount / $totalCount", color = Color(0xFFAAAAAA), fontSize = 13.sp)
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            if (onBack != null) {
+                IconButton(onClick = onBack, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+            } else {
+                Spacer(Modifier.width(8.dp))
+            }
+            Text("涩图品鉴", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text("$unviewedCount / $totalCount", color = Color(0xFFAAAAAA), fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
         }
     }
     // Reset FAB
