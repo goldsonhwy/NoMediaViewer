@@ -72,9 +72,17 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         }
     }
 
-    fun toggleAlbum(path: String) { val s = _state.value.selectedAlbumPaths.toMutableSet(); if (path in s) s.remove(path) else s.add(path); _state.value = _state.value.copy(selectedAlbumPaths = s) }
+    fun toggleAlbum(path: String) { markAlbumRead(path) }
     fun browseAlbum(path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path)
-    fun browseSelectedAlbums() { val paths = _state.value.selectedAlbumPaths.toList(); if (paths.isNotEmpty()) browsePaths(paths, "合并浏览 ${paths.size} 个文件夹", null); _state.value = _state.value.copy(selectedAlbumPaths = emptySet()) }
+    fun browseSelectedAlbums() { /* v0.15: 合并浏览已取消 */ }
+
+    fun markAlbumRead(path: String) {
+        val album = _state.value.albums.find { it.path == path } ?: return
+        album.imagePaths.forEach { repo.markViewed(it) }
+        _state.value = _state.value.copy(viewed = repo.viewed(), transientNotice = "已标记已读：${album.name}")
+        noticeJob?.cancel()
+        noticeJob = viewModelScope.launch { delay(1400); _state.value = _state.value.copy(transientNotice = null) }
+    }
 
     private fun browsePaths(paths: List<String>, title: String, albumPath: String?) = viewModelScope.launch {
         _state.value = _state.value.copy(loading = true, message = null)

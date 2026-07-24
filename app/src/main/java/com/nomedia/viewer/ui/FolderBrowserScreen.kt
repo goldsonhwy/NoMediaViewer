@@ -2,26 +2,20 @@ package com.nomedia.viewer.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FolderOff
-import androidx.compose.material.icons.filled.MergeType
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -31,20 +25,17 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
-import coil.size.Size
 import com.nomedia.viewer.FolderAlbum
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FolderBrowserScreen(
     albums: List<FolderAlbum>,
-    selectedPaths: Set<String>,
     viewed: Set<String>,
     loading: Boolean,
     message: String?,
     onAlbumClick: (String) -> Unit,
-    onAlbumLongClick: (String) -> Unit,
-    onMergeBrowse: () -> Unit
+    onAlbumLongClick: (String) -> Unit
 ) {
     Box(Modifier.fillMaxSize()) {
         when {
@@ -58,11 +49,10 @@ fun FolderBrowserScreen(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(albums, key = { it.path }) { album ->
-                    val selected = album.path in selectedPaths
                     val allRead = album.imagePaths.isNotEmpty() && album.imagePaths.all { it in viewed }
                     Card(
                         modifier = Modifier.combinedClickable(
-                            onClick = { if (selectedPaths.isEmpty()) onAlbumClick(album.path) else onAlbumLongClick(album.path) },
+                            onClick = { onAlbumClick(album.path) },
                             onLongClick = { onAlbumLongClick(album.path) }
                         ),
                         shape = RoundedCornerShape(10.dp),
@@ -75,17 +65,13 @@ fun FolderBrowserScreen(
                                     .crossfade(false)
                                     .allowHardware(true)
                                     .precision(Precision.INEXACT)
-                                    .size(360, 360)
+                                    .size(360, 640)
                                     .build(),
                                 contentDescription = album.name,
                                 modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
                                 contentScale = ContentScale.Crop
                             )
-                            if (allRead) GreenCorner(modifier = Modifier.align(Alignment.TopEnd), topRight = true, size = 18.dp)
-                            if (selected) {
-                                Box(Modifier.matchParentSize().background(Color(0x55000000)))
-                                Icon(Icons.Default.CheckCircle, null, tint = Color(0xFFE94560), modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp))
-                            }
+                            if (allRead) GreenCorner(modifier = Modifier.align(Alignment.TopStart), topRight = false, size = 18.dp)
                             Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), color = Color(0x88000000)) {
                                 Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Text(album.name, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -94,19 +80,6 @@ fun FolderBrowserScreen(
                             }
                         }
                     }
-                }
-            }
-        }
-        if (selectedPaths.isNotEmpty()) {
-            FloatingActionButton(
-                onClick = onMergeBrowse,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp),
-                containerColor = Color(0xFFE94560), contentColor = Color.White
-            ) {
-                Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.MergeType, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("合并浏览 (${selectedPaths.size})", fontWeight = FontWeight.Bold)
                 }
             }
         }

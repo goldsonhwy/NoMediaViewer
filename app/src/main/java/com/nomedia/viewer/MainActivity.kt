@@ -109,27 +109,24 @@ class MainActivity : ComponentActivity() {
                             0 -> BrowseScreen(
                                 title = state.browsingTitle,
                                 images = state.images,
-                                unviewed = emptyList(),
                                 columns = state.columns,
                                 isFavorite = { vm.isFavorite(it) },
                                 isRead = { it in state.viewed },
                                 onFavorite = { vm.toggleFavorite(it) },
                                 onOpenFull = { vm.openFullscreen(it) },
                                 onViewed = { vm.markRead(it) },
-                                onEndReached = { vm.goNextAlbumIfPossible() },
+                                onSwipeLeft = { vm.goNextAlbumIfPossible() },
                                 onBack = { vm.setTab(1) },
                                 onScrollUp = { vm.setBottomVisible(false) },
                                 onScrollDown = { vm.setBottomVisible(true) }
                             )
                             1 -> FolderBrowserScreen(
                                 albums = state.albums,
-                                selectedPaths = state.selectedAlbumPaths,
                                 viewed = state.viewed,
                                 loading = state.loading,
                                 message = state.message,
                                 onAlbumClick = { vm.browseAlbum(it) },
-                                onAlbumLongClick = { vm.toggleAlbum(it) },
-                                onMergeBrowse = { vm.browseSelectedAlbums() }
+                                onAlbumLongClick = { vm.markAlbumRead(it) }
                             )
                             2 -> FavoritesScreen(vm.favoriteImages(), onImageClick = { vm.openFullscreen(it) })
                             3 -> SettingsScreen(
