@@ -79,20 +79,23 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun scanLan(cb: (List<String>) -> Unit) = viewModelScope.launch { cb(network.scanLanIps()) }
     fun removeRoot(uri: String) { repo.removeRoot(uri); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
     fun setRootEnabled(uri: String, enabled: Boolean) { repo.setRootEnabled(uri, enabled); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
+    fun refreshWithNetwork() { rootsSignature = ""; scanAlbums(true, includeNetwork = true) }
+    fun clearNetworkRecovery() { network.clearCache(); repo.clearNetworkFolders(); reloadBasics(); rootsSignature = ""; scanAlbums(true) }
 
-    fun scanAlbums(force: Boolean = false) {
+    fun scanAlbums(force: Boolean = false, includeNetwork: Boolean = false) {
         val roots = repo.roots()
-        val sig = roots.filter { it.enabled }.joinToString("|") { it.path } + "||" + repo.networkFolders().filter { it.enabled }.joinToString("|") { it.id + it.url }
+        val sig = roots.filter { it.enabled }.joinToString("|") { it.path } + "||" + if (includeNetwork) repo.networkFolders().filter { it.enabled }.joinToString("|") { it.id + it.url } else "local-only"
         if (!force && sig == rootsSignature && _state.value.albums.isNotEmpty()) return
         scanJob?.cancel()
         scanJob = viewModelScope.launch {
             val nets = repo.networkFolders()
             _state.value = _state.value.copy(loading = true, message = null, roots = roots, networkFolders = nets, viewed = repo.viewed())
-            if (roots.none { it.enabled } && nets.none { it.enabled }) {
-                _state.value = _state.value.copy(loading = false, albums = emptyList(), message = if (roots.isEmpty() && nets.isEmpty()) "请先在设置中添加手机文件夹或网络文件夹" else "请启用至少一个目录")
+            if (roots.none { it.enabled } && (includeNetwork.not() || nets.none { it.enabled })) {
+                _state.value = _state.value.copy(loading = false, albums = emptyList(), message = if (roots.isEmpty() && (includeNetwork.not() || nets.isEmpty())) "请先在设置中添加手机文件夹；网络文件夹请在设置里手动刷新" else "请启用至少一个目录")
                 return@launch
             }
-            val albums = repo.scanAlbums(network)
+            AppLogger.log("开始扫描 includeNetwork=$includeNetwork")
+            val albums = repo.scanAlbums(if (includeNetwork) network else null)
             rootsSignature = sig
             _state.value = _state.value.copy(loading = false, albums = albums, viewed = repo.viewed(), message = if (albums.isEmpty()) "没有扫描到含图片的子目录" else null)
         }

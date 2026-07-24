@@ -199,6 +199,8 @@ class MainActivity : ComponentActivity() {
                                 onUpdateNetworkFolder = { id, type, name, url, user, pass, enabled, cb -> vm.updateNetworkFolderValidated(id, type, name, url, user, pass, enabled, cb) },
                                 onRemoveNetworkFolder = { vm.removeNetworkFolder(it) },
                                 onExportLogs = { exportLogs() },
+                                onRefreshNetwork = { vm.refreshWithNetwork() },
+                                onClearNetworkRecovery = { vm.clearNetworkRecovery() },
                                 onNetworkEnabled = { id, en -> vm.setNetworkFolderEnabled(id, en) },
                                 onProbeNetwork = { type, url, user, pass, cb -> vm.probeNetworkFolder(type, url, user, pass, cb) },
                                 onScanLan = { cb -> vm.scanLan(cb) },

@@ -39,6 +39,8 @@ fun SettingsScreen(
     onUpdateNetworkFolder: (String, com.nomedia.viewer.NetworkFolderType, String, String, String, String, Boolean, (String) -> Unit) -> Unit,
     onRemoveNetworkFolder: (String) -> Unit,
     onExportLogs: () -> Unit,
+    onRefreshNetwork: () -> Unit,
+    onClearNetworkRecovery: () -> Unit,
     onNetworkEnabled: (String, Boolean) -> Unit,
     onProbeNetwork: (com.nomedia.viewer.NetworkFolderType, String, String, String, (com.nomedia.viewer.NetworkProbeResult) -> Unit) -> Unit,
     onScanLan: ((List<String>) -> Unit) -> Unit,
@@ -138,6 +140,10 @@ fun SettingsScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加WebDAV") }
                 Button(onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加Samba") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onRefreshNetwork, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("刷新网络") }
+                Button(onClick = onClearNetworkRecovery, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("重置网络") }
             }
             Spacer(Modifier.height(8.dp))
             networkFolders.forEach { nf ->

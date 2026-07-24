@@ -51,6 +51,7 @@ class AppRepository(private val context: Context) {
         prefs.edit().putStringSet("network_roots", updated).apply()
     }
     fun removeNetworkFolder(id: String) { prefs.edit().putStringSet("network_roots", (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).filterNot { it.startsWith("$id\u001f") }.toSet()).apply() }
+    fun clearNetworkFolders() = prefs.edit().remove("network_roots").apply()
     fun setNetworkFolderEnabled(id: String, enabled: Boolean) {
         val updated = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).map { raw ->
             val p = raw.split("\u001f", limit = 7)

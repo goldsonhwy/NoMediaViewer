@@ -11,6 +11,7 @@ import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.share.DiskShare
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.InetAddress
@@ -26,6 +27,8 @@ class NetworkFolderManager(private val context: Context) {
     private val imageExt = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
     private val cacheRoot = File(context.cacheDir, "network_folders").apply { mkdirs() }
 
+    fun clearCache() { runCatching { cacheRoot.deleteRecursively(); cacheRoot.mkdirs() } }
+
     suspend fun scan(folder: NetworkFolder): List<String> = withContext(Dispatchers.IO) {
         runCatching {
             when (folder.type) {
@@ -36,9 +39,17 @@ class NetworkFolderManager(private val context: Context) {
     }
 
     suspend fun probe(type: NetworkFolderType, rawUrl: String, user: String, pass: String): NetworkProbeResult = withContext(Dispatchers.IO) {
-        when (type) {
-            NetworkFolderType.WEBDAV -> probeWebDav(rawUrl, user, pass)
-            NetworkFolderType.SMB, NetworkFolderType.FEINIU_NAS -> probeSmb(rawUrl, user, pass, type == NetworkFolderType.FEINIU_NAS)
+        AppLogger.log("开始验证网络节点 type=$type url=$rawUrl")
+        runCatching {
+            withTimeout(9000) {
+                when (type) {
+                    NetworkFolderType.WEBDAV -> probeWebDav(rawUrl, user, pass)
+                    NetworkFolderType.SMB, NetworkFolderType.FEINIU_NAS -> probeSmb(rawUrl, user, pass, type == NetworkFolderType.FEINIU_NAS)
+                }
+            }
+        }.getOrElse {
+            AppLogger.log("网络验证失败/超时: ${it.stackTraceToString()}")
+            NetworkProbeResult(false, "❌ 验证超时或失败：${it.localizedMessage ?: it.javaClass.simpleName}", rawUrl)
         }
     }
 
@@ -70,6 +81,7 @@ class NetworkFolderManager(private val context: Context) {
         val errors = mutableListOf<String>()
         for (candidate in candidates) {
             val p = parseSmb(candidate) ?: continue
+            if (!isOpen(p.host, 445)) { errors += "$candidate: 445端口未开放或超时"; continue }
             val r = runCatching {
                 SMBClient().use { client ->
                     client.connect(p.host).use { conn ->
