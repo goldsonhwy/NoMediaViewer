@@ -30,7 +30,7 @@ class NetworkFolderManager(private val context: Context) {
         runCatching {
             when (folder.type) {
                 NetworkFolderType.WEBDAV -> scanWebDav(folder)
-                NetworkFolderType.SMB -> scanSmb(folder)
+                NetworkFolderType.SMB, NetworkFolderType.FEINIU_NAS -> scanSmb(folder)
             }
         }.getOrElse { emptyList() }
     }
@@ -38,7 +38,7 @@ class NetworkFolderManager(private val context: Context) {
     suspend fun probe(type: NetworkFolderType, rawUrl: String, user: String, pass: String): NetworkProbeResult = withContext(Dispatchers.IO) {
         when (type) {
             NetworkFolderType.WEBDAV -> probeWebDav(rawUrl, user, pass)
-            NetworkFolderType.SMB -> probeSmb(rawUrl, user, pass)
+            NetworkFolderType.SMB, NetworkFolderType.FEINIU_NAS -> probeSmb(rawUrl, user, pass, type == NetworkFolderType.FEINIU_NAS)
         }
     }
 
@@ -65,20 +65,32 @@ class NetworkFolderManager(private val context: Context) {
         return NetworkProbeResult(false, errors.joinToString("\n"), candidates.firstOrNull().orEmpty())
     }
 
-    private fun probeSmb(raw: String, user: String, pass: String): NetworkProbeResult {
-        val p = parseSmb(raw) ?: return NetworkProbeResult(false, "❌ SMB地址格式应为 smb://host/share/path", raw)
-        return runCatching {
-            SMBClient().use { client ->
-                client.connect(p.host).use { conn ->
-                    val ac = AuthenticationContext(user.ifBlank { "guest" }, pass.toCharArray(), p.domain)
-                    val session = conn.authenticate(ac)
-                    (session.connectShare(p.share) as DiskShare).use { share ->
-                        val dirs = share.list(p.path).filter { (it.fileAttributes and 0x10L) != 0L }.map { "smb://${p.host}/${p.share}/" + listOf(p.path, it.fileName).filter { s -> s.isNotBlank() }.joinToString("/") }.take(40)
-                        NetworkProbeResult(true, "✅ SMB验证成功", raw, dirs)
+    private fun probeSmb(raw: String, user: String, pass: String, feiniu: Boolean): NetworkProbeResult {
+        val candidates = smbCandidates(raw, feiniu)
+        val errors = mutableListOf<String>()
+        for (candidate in candidates) {
+            val p = parseSmb(candidate) ?: continue
+            val r = runCatching {
+                SMBClient().use { client ->
+                    client.connect(p.host).use { conn ->
+                        val session = if (user.isBlank()) {
+                            runCatching { conn.authenticate(AuthenticationContext.anonymous()) }.getOrElse {
+                                conn.authenticate(AuthenticationContext("guest", CharArray(0), p.domain))
+                            }
+                        } else conn.authenticate(AuthenticationContext(user, pass.toCharArray(), p.domain))
+                        (session.connectShare(p.share) as DiskShare).use { share ->
+                            val dirs = share.list(p.path)
+                                .filter { (it.fileAttributes and 0x10L) != 0L }
+                                .map { "smb://${p.host}/${p.share}/" + listOf(p.path, it.fileName).filter { s -> s.isNotBlank() }.joinToString("/") }
+                                .take(40)
+                            NetworkProbeResult(true, if (feiniu) "✅ 飞牛NAS/SMB验证成功" else "✅ SMB验证成功", candidate, dirs)
+                        }
                     }
                 }
-            }
-        }.getOrElse { NetworkProbeResult(false, "❌ ${it.localizedMessage ?: it.javaClass.simpleName}", raw) }
+            }.getOrElse { e -> errors += "${candidate}: ${e.localizedMessage ?: e.javaClass.simpleName}"; null }
+            if (r != null) return r
+        }
+        return NetworkProbeResult(false, "❌ SMB验证失败\n" + errors.take(4).joinToString("\n"), candidates.firstOrNull().orEmpty())
     }
 
     private fun isOpen(host: String, port: Int): Boolean = runCatching { Socket().use { it.connect(InetSocketAddress(host, port), 140); true } }.getOrDefault(false)
@@ -140,8 +152,11 @@ class NetworkFolderManager(private val context: Context) {
         val out = mutableListOf<String>()
         SMBClient().use { client ->
             client.connect(parsed.host).use { conn ->
-                val ac = AuthenticationContext(folder.user.ifBlank { "guest" }, folder.pass.toCharArray(), parsed.domain)
-                val session = conn.authenticate(ac)
+                val session = if (folder.user.isBlank()) {
+                    runCatching { conn.authenticate(AuthenticationContext.anonymous()) }.getOrElse {
+                        conn.authenticate(AuthenticationContext("guest", CharArray(0), parsed.domain))
+                    }
+                } else conn.authenticate(AuthenticationContext(folder.user, folder.pass.toCharArray(), parsed.domain))
                 (session.connectShare(parsed.share) as DiskShare).use { share ->
                     fun walk(path: String, depth: Int) {
                         if (depth > 20) return
@@ -194,5 +209,13 @@ class NetworkFolderManager(private val context: Context) {
         val parts = s.split('/').filter { it.isNotBlank() }
         if (parts.size < 2) return null
         return SmbParts(parts[0], parts[1], parts.drop(2).joinToString("/"))
+    }
+
+    private fun smbCandidates(raw: String, feiniu: Boolean): List<String> {
+        val trimmed = raw.trim()
+        if (trimmed.startsWith("smb://") && trimmed.removePrefix("smb://").trim('/').split('/').size >= 2) return listOf(trimmed)
+        val host = trimmed.removePrefix("smb://").trim('/').substringBefore('/')
+        val shares = if (feiniu) listOf("homes", "home", "photo", "photos", "media", "public", "share") else listOf("photo", "photos", "media", "public", "share")
+        return shares.map { "smb://$host/$it" }
     }
 }

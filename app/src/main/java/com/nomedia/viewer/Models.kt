@@ -37,7 +37,7 @@ data class StorageConfig(
     val smbPass: String = ""
 )
 
-enum class NetworkFolderType { WEBDAV, SMB }
+enum class NetworkFolderType { WEBDAV, SMB, FEINIU_NAS }
 
 data class NetworkFolder(
     val id: String,

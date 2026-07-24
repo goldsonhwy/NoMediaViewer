@@ -90,9 +90,14 @@ fun SettingsScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.WEBDAV, onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV }, label = { Text("WebDAV") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
                 FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.SMB, onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB }, label = { Text("SMB") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
+                FilterChip(selected = netType == com.nomedia.viewer.NetworkFolderType.FEINIU_NAS, onClick = { netType = com.nomedia.viewer.NetworkFolderType.FEINIU_NAS }, label = { Text("飞牛NAS") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFB000), selectedLabelColor = Color.Black, containerColor = Color(0xFF202020), labelColor = Color(0xFFFFB000)))
             }
             Field("显示名称", netName) { netName = it }
-            Field(if (netType == com.nomedia.viewer.NetworkFolderType.WEBDAV) "WebDAV地址" else "SMB地址 smb://host/share/path", netUrl) { netUrl = it }
+            Field(when (netType) {
+                com.nomedia.viewer.NetworkFolderType.WEBDAV -> "WebDAV地址或IP"
+                com.nomedia.viewer.NetworkFolderType.FEINIU_NAS -> "飞牛NAS IP或 smb://IP/share"
+                else -> "SMB地址 smb://host/share/path"
+            }, netUrl) { netUrl = it }
             Field("用户名", netUser) { netUser = it }
             Field("密码", netPass) { netPass = it }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
