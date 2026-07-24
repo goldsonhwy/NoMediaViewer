@@ -84,6 +84,14 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         noticeJob = viewModelScope.launch { delay(1400); _state.value = _state.value.copy(transientNotice = null) }
     }
 
+    fun unmarkAlbumRead(path: String) {
+        val album = _state.value.albums.find { it.path == path } ?: return
+        repo.unmarkViewed(album.imagePaths)
+        _state.value = _state.value.copy(viewed = repo.viewed(), transientNotice = "已恢复未浏览：${album.name}")
+        noticeJob?.cancel()
+        noticeJob = viewModelScope.launch { delay(1400); _state.value = _state.value.copy(transientNotice = null) }
+    }
+
     private fun browsePaths(paths: List<String>, title: String, albumPath: String?) = viewModelScope.launch {
         _state.value = _state.value.copy(loading = true, message = null)
         val imgs = repo.scanImages(paths)
@@ -115,8 +123,23 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     }
 
     fun toggleFavorite(path: String) {
-        val added = repo.toggleFavorite(path); _state.value = _state.value.copy(favorites = repo.favorites())
-        if (added) { val img = _state.value.images.find { it.path == path } ?: repo.favoriteImages().find { it.path == path }; if (img != null) viewModelScope.launch { storage.saveFavoriteImage(img.path, img.name, repo.storageConfig()) } }
+        val added = repo.toggleFavorite(path)
+        _state.value = _state.value.copy(favorites = repo.favorites())
+        val cfg = repo.storageConfig()
+        if (added) {
+            val img = _state.value.images.find { it.path == path } ?: repo.favoriteImages().find { it.path == path }
+            if (img != null) viewModelScope.launch {
+                storage.saveFavoriteImage(img.path, cfg, repo.enabledRootPaths()).onSuccess { copied ->
+                    repo.setFavoriteCopyPath(path, copied)
+                }
+            }
+        } else {
+            val copied = repo.favoriteCopyPath(path)
+            if (copied.isNotBlank()) viewModelScope.launch {
+                storage.deleteFavoriteCopy(copied, cfg)
+                repo.clearFavoriteCopyPath(path)
+            }
+        }
     }
     fun favoriteImages(): List<ImageFile> = repo.favoriteImages()
     fun isFavorite(path: String): Boolean = path in repo.favorites()

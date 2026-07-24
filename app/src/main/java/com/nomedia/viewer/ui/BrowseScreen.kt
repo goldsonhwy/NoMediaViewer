@@ -67,7 +67,7 @@ fun BrowseScreen(
                 )
             }
     ) {
-        if (columns == 2) TwoColumn(images, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onScrollUp, onScrollDown)
+        if (columns > 1) MultiColumn(images, columns, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onScrollUp, onScrollDown)
         else OneColumn(images, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onScrollUp, onScrollDown)
     }
 }
@@ -88,19 +88,19 @@ private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, is
 }
 
 @Composable
-private fun TwoColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
+private fun MultiColumn(images: List<ImageFile>, columns: Int, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
     val state = rememberLazyGridState()
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     LaunchedEffect(state, images) {
         snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { first ->
-            // 双列模式一行有两张：同时标记左右两张，修复只标右侧/单侧的问题
-            listOf(first, first + 1, first - 1, first - 2).forEach { idx ->
+            val start = (first / columns) * columns
+            ((start - columns) until (start + columns)).forEach { idx ->
                 if (idx in images.indices) onViewed(images[idx].path)
             }
         }
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2), state = state, modifier = Modifier.fillMaxSize(),
+        columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(1.dp), verticalArrangement = Arrangement.spacedBy(1.dp)
     ) { itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) } }
 }

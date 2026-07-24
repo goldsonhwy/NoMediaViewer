@@ -1,7 +1,6 @@
 package com.nomedia.viewer
 
 import android.content.Context
-import android.net.Uri
 import android.os.Environment
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
@@ -10,41 +9,54 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 class StorageManager(private val context: Context) {
-    suspend fun saveFavoriteImage(imagePath: String, fileName: String, config: StorageConfig): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun saveFavoriteImage(imagePath: String, config: StorageConfig, rootPaths: List<String>): Result<String> = withContext(Dispatchers.IO) {
         if (!config.enabled) return@withContext Result.failure(Exception("未启用存储"))
         runCatching {
+            val relative = relativePath(imagePath, rootPaths)
             when (config.type) {
-                StorageType.LOCAL -> saveLocal(imagePath, fileName, config.localPath)
-                StorageType.WEBDAV -> saveWebDav(imagePath, fileName, config)
-                StorageType.SMB -> saveLocal(imagePath, fileName, File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
+                StorageType.LOCAL -> saveLocal(imagePath, relative, config.localPath)
+                StorageType.WEBDAV -> saveWebDav(imagePath, relative, config)
+                StorageType.SMB -> saveLocal(imagePath, relative, File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
             }
         }
     }
 
-    private fun saveLocal(imagePath: String, fileName: String, dirPath: String): String {
+    suspend fun deleteFavoriteCopy(copiedPathOrUrl: String, config: StorageConfig): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (copiedPathOrUrl.isBlank()) return@runCatching
+            when (config.type) {
+                StorageType.LOCAL, StorageType.SMB -> File(copiedPathOrUrl).takeIf { it.exists() }?.delete()
+                StorageType.WEBDAV -> deleteWebDav(copiedPathOrUrl, config)
+            }
+            Unit
+        }
+    }
+
+    private fun relativePath(imagePath: String, rootPaths: List<String>): String {
+        val normalized = File(imagePath).absolutePath
+        val root = rootPaths.map { File(it).absolutePath.trimEnd('/') + "/" }.firstOrNull { normalized.startsWith(it) }
+        return if (root != null) normalized.removePrefix(root) else File(imagePath).name
+    }
+
+    private fun saveLocal(imagePath: String, relativePath: String, dirPath: String): String {
         val src = File(imagePath)
         require(src.exists()) { "源文件不存在" }
-        val dir = File(if (dirPath.isNotBlank()) dirPath else File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
-        if (!dir.exists()) dir.mkdirs()
-        var dst = File(dir, fileName)
-        var i = 1
-        while (dst.exists()) {
-            val stem = fileName.substringBeforeLast('.', fileName)
-            val ext = fileName.substringAfterLast('.', "")
-            dst = File(dir, if (ext.isBlank()) "${stem}_$i" else "${stem}_$i.$ext")
-            i++
-        }
+        val base = File(if (dirPath.isNotBlank()) dirPath else File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
+        val dst = File(base, relativePath)
+        dst.parentFile?.mkdirs()
         src.inputStream().use { input -> FileOutputStream(dst).use { input.copyTo(it) } }
         return dst.absolutePath
     }
 
-    private fun saveWebDav(imagePath: String, fileName: String, config: StorageConfig): String {
+    private fun saveWebDav(imagePath: String, relativePath: String, config: StorageConfig): String {
         val src = File(imagePath)
         require(src.exists()) { "源文件不存在" }
         val base = normalizedWebDavUrl(config.webdavUrl).firstOrNull() ?: throw IllegalArgumentException("WebDAV地址无效")
-        val url = base.trimEnd('/') + "/" + java.net.URLEncoder.encode(fileName, "UTF-8").replace("+", "%20")
+        val encodedPath = relativePath.split('/', '\\').joinToString("/") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+        val url = base.trimEnd('/') + "/" + encodedPath
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "PUT"
@@ -60,6 +72,20 @@ class StorageManager(private val context: Context) {
             val code = conn.responseCode
             if (code !in 200..299) throw IllegalStateException("WebDAV上传失败 HTTP $code")
             return url
+        } finally { conn.disconnect() }
+    }
+
+    private fun deleteWebDav(url: String, config: StorageConfig) {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "DELETE"
+            conn.connectTimeout = 8000
+            conn.readTimeout = 12000
+            if (config.webdavUser.isNotBlank()) {
+                val auth = Base64.encodeToString("${config.webdavUser}:${config.webdavPass}".toByteArray(), Base64.NO_WRAP)
+                conn.setRequestProperty("Authorization", "Basic $auth")
+            }
+            conn.responseCode
         } finally { conn.disconnect() }
     }
 

@@ -81,6 +81,7 @@ class AppRepository(private val context: Context) {
 
     fun viewed(): Set<String> = prefs.getStringSet("viewed", emptySet()) ?: emptySet()
     fun markViewed(path: String) = prefs.edit().putStringSet("viewed", viewed().toMutableSet().also { it.add(path) }).apply()
+    fun unmarkViewed(paths: Collection<String>) = prefs.edit().putStringSet("viewed", viewed().toMutableSet().also { it.removeAll(paths.toSet()) }).apply()
     fun resetViewed() = prefs.edit().remove("viewed").apply()
 
     fun favorites(): Set<String> = prefs.getStringSet("favorites", emptySet()) ?: emptySet()
@@ -90,13 +91,16 @@ class AppRepository(private val context: Context) {
         prefs.edit().putStringSet("favorites", set).apply()
         return added
     }
+    fun favoriteCopyPath(path: String): String = prefs.getString("favorite_copy_${path.hashCode()}", "") ?: ""
+    fun setFavoriteCopyPath(path: String, copiedPath: String) = prefs.edit().putString("favorite_copy_${path.hashCode()}", copiedPath).apply()
+    fun clearFavoriteCopyPath(path: String) = prefs.edit().remove("favorite_copy_${path.hashCode()}").apply()
     fun favoriteImages(): List<ImageFile> = favorites().mapNotNull { p ->
         val f = File(p)
         if (f.exists()) ImageFile(f.absolutePath, f.name, f.parentFile?.absolutePath ?: "", f.length(), f.lastModified()) else null
     }.sortedByDescending { it.lastModified }
 
-    fun columns(): Int = prefs.getInt("columns", 1).coerceIn(1, 2)
-    fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 2)).apply()
+    fun columns(): Int = prefs.getInt("columns", 1).coerceIn(1, 5)
+    fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 5)).apply()
 
     fun storageConfig(): StorageConfig = StorageConfig(
         enabled = prefs.getBoolean("storage_enabled", false),

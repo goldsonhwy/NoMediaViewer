@@ -49,7 +49,7 @@ fun SettingsScreen(
         Text("设置", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Section("扫描根目录") {
-            Button(onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000))) {
+            Button(onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
                 Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text("添加手机文件夹")
             }
             Spacer(Modifier.height(10.dp))
@@ -70,23 +70,52 @@ fun SettingsScreen(
         }
         Spacer(Modifier.height(16.dp))
         Section("浏览布局") {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FilterChip(selected = columns == 1, onClick = { onColumns(1) }, label = { Text("单列") })
-                FilterChip(selected = columns == 2, onClick = { onColumns(2) }, label = { Text("双列") })
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                (1..5).forEach { n ->
+                    FilterChip(
+                        selected = columns == n,
+                        onClick = { onColumns(n) },
+                        label = { Text("${n}列") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFFFB000),
+                            selectedLabelColor = Color.Black,
+                            containerColor = Color(0xFF202020),
+                            labelColor = Color(0xFFFFB000)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = columns == n,
+                            borderColor = Color(0xFFFFB000),
+                            selectedBorderColor = Color(0xFFFFB000)
+                        )
+                    )
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onResetViewed,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))
-            ) { Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp)); Text("重置阅后即焚记录") }
         }
         Spacer(Modifier.height(16.dp))
         Section("收藏存储") {
             Row(verticalAlignment = Alignment.CenterVertically) { Text("自动备份收藏", color = Color.White, modifier = Modifier.weight(1f)); Switch(cfg.enabled, { cfg = cfg.copy(enabled = it) }) }
             if (cfg.enabled) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StorageType.values().forEach { t -> FilterChip(selected = cfg.type == t, onClick = { cfg = cfg.copy(type = t) }, label = { Text(t.name) }) }
+                    StorageType.values().forEach { t ->
+                        FilterChip(
+                            selected = cfg.type == t,
+                            onClick = { cfg = cfg.copy(type = t) },
+                            label = { Text(t.name) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFFFB000),
+                                selectedLabelColor = Color.Black,
+                                containerColor = Color(0xFF202020),
+                                labelColor = Color(0xFFFFB000)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = cfg.type == t,
+                                borderColor = Color(0xFFFFB000),
+                                selectedBorderColor = Color(0xFFFFB000)
+                            )
+                        )
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 when (cfg.type) {
@@ -109,7 +138,7 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                Button(onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000))) { Text("保存存储设置") }
+                Button(onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("保存存储设置") }
             }
         }
         Spacer(Modifier.height(50.dp))

@@ -20,6 +20,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Folder
@@ -91,15 +93,35 @@ class MainActivity : ComponentActivity() {
                             enter = slideInVertically(animationSpec = tween(90)) { it } + fadeIn(animationSpec = tween(70)),
                             exit = slideOutVertically(animationSpec = tween(70)) { it } + fadeOut(animationSpec = tween(50))
                         ) {
-                            NavigationBar(containerColor = DarkSurface) {
-                                tabs.forEachIndexed { idx, tab ->
-                                    NavigationBarItem(
-                                        selected = state.currentTab == idx,
-                                        onClick = { vm.setTab(idx) },
-                                        icon = { Icon(if (state.currentTab == idx) tab.selectedIcon else tab.unselectedIcon, null) },
-                                        label = { Text(tab.label, fontSize = 11.sp) },
-                                        colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentGold, selectedTextColor = AccentGold, unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary, indicatorColor = AccentBlue)
-                                    )
+                            Surface(color = Color.Black, tonalElevation = 0.dp) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(36.dp)
+                                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    tabs.forEachIndexed { idx, tab ->
+                                        val selected = state.currentTab == idx
+                                        Surface(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .clickable { vm.setTab(idx) },
+                                            color = if (selected) Color(0xFFFFB000) else Color(0xFF111111),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    tab.label,
+                                                    color = if (selected) Color.Black else Color(0xFFFFB000),
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -123,7 +145,7 @@ class MainActivity : ComponentActivity() {
                                 onScrollDown = { vm.setBottomVisible(true) }
                             )
                             1 -> {
-                                val unreadAlbums = state.albums.filter { album -> album.imagePaths.any { it !in state.viewed } }
+                                val unreadAlbums = state.albums.filter { album -> album.imagePaths.none { it in state.viewed } }
                                 FolderBrowserScreen(
                                     albums = unreadAlbums,
                                     viewed = state.viewed,
@@ -134,14 +156,14 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             2 -> {
-                                val readAlbums = state.albums.filter { album -> album.imagePaths.isNotEmpty() && album.imagePaths.all { it in state.viewed } }
+                                val readAlbums = state.albums.filter { album -> album.imagePaths.any { it in state.viewed } }
                                 FolderBrowserScreen(
                                     albums = readAlbums,
                                     viewed = state.viewed,
                                     loading = state.loading,
-                                    message = state.message ?: "还没有已浏览完成的文件夹",
+                                    message = state.message ?: "还没有已浏览文件夹",
                                     onAlbumClick = { vm.browseAlbum(it) },
-                                    onAlbumLongClick = { vm.markAlbumRead(it) }
+                                    onAlbumLongClick = { vm.unmarkAlbumRead(it) }
                                 )
                             }
                             3 -> FavoritesScreen(vm.favoriteImages(), onImageClick = { vm.openFullscreen(it) })
