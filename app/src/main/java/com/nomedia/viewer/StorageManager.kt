@@ -18,7 +18,7 @@ class StorageManager(private val context: Context) {
             when (config.type) {
                 StorageType.LOCAL -> saveLocal(imagePath, fileName, config.localPath)
                 StorageType.WEBDAV -> saveWebDav(imagePath, fileName, config)
-                StorageType.SMB -> saveLocal(imagePath, fileName, File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "涩图品鉴收藏").absolutePath)
+                StorageType.SMB -> saveLocal(imagePath, fileName, File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
             }
         }
     }
@@ -26,7 +26,7 @@ class StorageManager(private val context: Context) {
     private fun saveLocal(imagePath: String, fileName: String, dirPath: String): String {
         val src = File(imagePath)
         require(src.exists()) { "源文件不存在" }
-        val dir = File(if (dirPath.isNotBlank()) dirPath else File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "涩图品鉴收藏").absolutePath)
+        val dir = File(if (dirPath.isNotBlank()) dirPath else File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
         if (!dir.exists()) dir.mkdirs()
         var dst = File(dir, fileName)
         var i = 1

@@ -49,21 +49,21 @@ fun SettingsScreen(
         Text("设置", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Section("扫描根目录") {
-            Button(onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F3460))) {
+            Button(onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000))) {
                 Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text("添加手机文件夹")
             }
             Spacer(Modifier.height(10.dp))
             roots.forEach { r ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF16213E)), shape = RoundedCornerShape(10.dp)) {
+                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)), shape = RoundedCornerShape(10.dp)) {
                     Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Folder, null, tint = Color(0xFFE94560))
+                        Icon(Icons.Default.Folder, null, tint = Color(0xFFFFB000))
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(r.name, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(r.path, color = Color(0xFFB0B0B0), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Switch(checked = r.enabled, onCheckedChange = { onRootEnabled(r.uri, it) })
-                        IconButton(onClick = { onRemoveRoot(r.uri) }) { Icon(Icons.Default.Delete, null, tint = Color(0x99FF6B6B)) }
+                        IconButton(onClick = { onRemoveRoot(r.uri) }) { Icon(Icons.Default.Delete, null, tint = Color(0x99FFB000)) }
                     }
                 }
             }
@@ -78,7 +78,7 @@ fun SettingsScreen(
             Button(
                 onClick = onResetViewed,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A5C))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))
             ) { Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp)); Text("重置阅后即焚记录") }
         }
         Spacer(Modifier.height(16.dp))
@@ -91,15 +91,15 @@ fun SettingsScreen(
                 Spacer(Modifier.height(10.dp))
                 when (cfg.type) {
                     StorageType.LOCAL -> {
-                        Button(onClick = { localPick.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A5C))) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.localPath.isBlank()) "选择本地存储目录" else "已选择本地目录") }
+                        Button(onClick = { localPick.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.localPath.isBlank()) "选择本地存储目录" else "已选择本地目录") }
                         if (cfg.localPath.isNotBlank()) Text(cfg.localPath, color = Color(0xFFB0B0B0), fontSize = 11.sp)
                     }
                     StorageType.WEBDAV -> {
                         Field("WebDAV地址", cfg.webdavUrl) { cfg = cfg.copy(webdavUrl = it) }
                         Field("用户名", cfg.webdavUser) { cfg = cfg.copy(webdavUser = it) }
                         Field("密码", cfg.webdavPass) { cfg = cfg.copy(webdavPass = it) }
-                        Button(onClick = { test = "测试中..."; onTestWebDav(cfg.webdavUrl, cfg.webdavUser, cfg.webdavPass) { test = it } }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3A5C))) { Icon(Icons.Default.NetworkCheck, null); Spacer(Modifier.width(8.dp)); Text("自动测试http/https") }
-                        test?.let { Text(it, color = if (it.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFFF6B6B), fontSize = 12.sp) }
+                        Button(onClick = { test = "测试中..."; onTestWebDav(cfg.webdavUrl, cfg.webdavUser, cfg.webdavPass) { test = it } }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.NetworkCheck, null); Spacer(Modifier.width(8.dp)); Text("自动测试http/https") }
+                        test?.let { Text(it, color = if (it.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp) }
                     }
                     StorageType.SMB -> {
                         Field("SMB地址", cfg.smbUrl) { cfg = cfg.copy(smbUrl = it) }
@@ -109,7 +109,7 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                Button(onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE94560))) { Text("保存存储设置") }
+                Button(onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000))) { Text("保存存储设置") }
             }
         }
         Spacer(Modifier.height(50.dp))
@@ -119,6 +119,6 @@ fun SettingsScreen(
 @Composable private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
     Spacer(Modifier.height(8.dp))
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF16213E)), shape = RoundedCornerShape(12.dp)) { Column(Modifier.fillMaxWidth().padding(14.dp), content = content) }
+    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)), shape = RoundedCornerShape(12.dp)) { Column(Modifier.fillMaxWidth().padding(14.dp), content = content) }
 }
-@Composable private fun Field(label: String, value: String, onChange: (String)->Unit) { OutlinedTextField(value, onChange, label = { Text(label, color = Color(0xFFE0E0E0)) }, modifier = Modifier.fillMaxWidth(), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = Color.White, unfocusedLabelColor = Color(0xFFE0E0E0), focusedBorderColor = Color(0xFFE94560), unfocusedBorderColor = Color(0xFF9A9A9A), cursorColor = Color(0xFFE94560))) }
+@Composable private fun Field(label: String, value: String, onChange: (String)->Unit) { OutlinedTextField(value, onChange, label = { Text(label, color = Color(0xFFE0E0E0)) }, modifier = Modifier.fillMaxWidth(), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = Color.White, unfocusedLabelColor = Color(0xFFE0E0E0), focusedBorderColor = Color(0xFFFFB000), unfocusedBorderColor = Color(0xFF9A9A9A), cursorColor = Color(0xFFFFB000))) }

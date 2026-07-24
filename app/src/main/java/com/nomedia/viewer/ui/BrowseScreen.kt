@@ -109,7 +109,7 @@ private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (St
             contentScale = ContentScale.FillWidth
         )
         if (isRead(img.path)) GreenCorner(modifier = Modifier.align(Alignment.TopStart), topRight = false, size = 14.dp)
-        if (isFavorite(img.path)) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFF6B6B))
+        if (isFavorite(img.path)) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFFB000))
     }
 }
 

@@ -1,87 +1,36 @@
-# NoMedia Viewer 📸
+# Yellow-gallery
 
-一款安卓图片浏览工具，专门扫描和浏览 **.nomedia 文件夹** 中的隐藏图片。采用瀑布流无接缝浏览方式，阅后即焚 + 收藏筛选机制，帮助你快速筛选和整理图片。
+黄黑配色的 Android 隐藏图片/相册浏览器，面向 `.nomedia` 与普通子目录中的图片浏览、已读标记、收藏筛选和本地/WebDAV/SMB 备份。
 
-## ✨ 特性
+## 功能
 
-- 🔍 **扫描 .nomedia** — 自动发现手机中所有包含 `.nomedia` 文件的目录
-- 🌊 **无接缝瀑布流** — 图片连续排列，上下滑动无缝切换，像翻阅 PDF 一样流畅
-- ❤️ **双击收藏** — 双击任意图片即加入收藏夹，红心动效反馈
-- 👁️ **阅后即焚** — 默认看过不再显示，专注筛选未看图片
-- 🔄 **一键重置** — 重置浏览历史，所有图片重新可见
-- 🗂️ **收藏管理** — 底部导航切换收藏页面，网格展示/管理
+- 设置页添加手机根目录，递归扫描所有含图片的子目录
+- 文件夹页以 9:16 缩略图网格显示相册，左上角绿色三角表示整夹已读
+- 浏览页支持单列/双列瀑布流，单击收藏，双击全屏
+- 浏览中左滑切换到下一个文件夹，并显示 2 秒提示
+- 已读图片左上角显示绿色小三角，不再隐藏
+- 收藏页 2 列原比例瀑布流，全屏支持单击收藏/取消、双击缩放、下拉退出
+- 收藏可备份到本地目录、WebDAV 或 SMB（SMB 实验性）
 
-## 📱 截图
-
-_(截图待补充)_
-
-## 🛠 技术栈
-
-| 技术 | 用途 |
-|------|------|
-| **Kotlin** | 开发语言 |
-| **Jetpack Compose** | UI 框架 |
-| **Coil** | 图片异步加载 |
-| **Material 3** | 设计语言 |
-| **SharedPreferences** | 收藏/浏览历史持久化 |
-| **Gradle 8.2** | 构建系统 |
-| **minSdk 26 / targetSdk 34** | 兼容范围 |
-
-## 🔧 构建
+## 构建
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/YOUR_USERNAME/NoMediaViewer.git
-cd NoMediaViewer
-
-# 2. 设置 Android SDK 路径 (或创建 local.properties)
-export ANDROID_HOME=/path/to/android-sdk
-
-# 3. 构建 Debug APK
-./gradlew assembleDebug
-
-# APK 输出路径:
-# app/build/outputs/apk/debug/app-debug.apk
+export ANDROID_HOME=/opt/android-sdk
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export PATH="/opt/gradle/gradle-8.2/bin:$PATH"
+gradle assembleDebug --no-daemon
 ```
 
-**环境要求：**
-- JDK 17+
-- Android SDK 34+
-- Android Gradle Plugin 8.2+
+APK 输出：`app/build/outputs/apk/debug/app-debug.apk`
 
-## 📦 安装
+## 技术栈
 
-从 [Releases](https://github.com/YOUR_USERNAME/NoMediaViewer/releases) 页面下载最新 APK，或自行构建。
+- Kotlin
+- Jetpack Compose
+- Coil
+- SharedPreferences
+- Android File API + MANAGE_EXTERNAL_STORAGE
 
-> ⚠️ 首次运行需要授予**存储权限**（Android 11+ 需要"管理所有文件"权限），因为 `.nomedia` 文件中的图片不被系统媒体库索引。
+## 仓库
 
-## 📁 项目结构
-
-```
-NoMediaViewer/
-├── app/
-│   ├── build.gradle.kts          # 模块构建配置
-│   └── src/main/
-│       ├── AndroidManifest.xml   # 权限 & Activity 声明
-│       ├── res/                  # 资源文件 (主题, 图标)
-│       └── java/com/nomedia/viewer/
-│           ├── MainActivity.kt          # 主入口 & 权限处理
-│           ├── MainViewModel.kt         # 状态管理
-│           ├── ImageRepository.kt       # 数据层 (扫描, 收藏, 历史)
-│           └── ui/
-│               ├── BrowseScreen.kt      # 瀑布流浏览页面
-│               ├── FavoritesScreen.kt   # 收藏管理页面
-│               └── theme/Theme.kt       # 主题配色
-├── build.gradle.kts             # 根项目配置
-├── settings.gradle.kts          # 项目设置
-├── gradle.properties            # Gradle 属性
-└── README.md                    # 本文件
-```
-
-## 📄 License
-
-[MIT](LICENSE)
-
----
-
-**Made with ❤️ by [Your Name]**
+https://github.com/goldsonhwy/Yellow-gallery

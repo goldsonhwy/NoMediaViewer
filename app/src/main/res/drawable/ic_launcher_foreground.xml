@@ -3,9 +3,10 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:translateX="22" android:translateY="22">
-        <path
-            android:fillColor="#E94560"
-            android:pathData="M32,4C20.96,4 12,12.96 12,24c0,8 4.8,14.88 12,18.24V64l8-8l8,8V42.24C47.2,38.88 52,32 52,24C52,12.96 43.04,4 32,4z"/>
-    </group>
+    <!-- black album/photo stack -->
+    <path android:fillColor="#000000" android:pathData="M25,30h47c3.3,0 6,2.7 6,6v35c0,3.3 -2.7,6 -6,6H25c-3.3,0 -6,-2.7 -6,-6V36c0,-3.3 2.7,-6 6,-6z"/>
+    <path android:fillColor="#FFB000" android:pathData="M27,38h43v27H27z"/>
+    <path android:fillColor="#000000" android:pathData="M31,61l10,-12l8,9l7,-7l12,14H31z"/>
+    <path android:fillColor="#000000" android:pathData="M58,42a5,5 0,1 0,0.1 0z"/>
+    <path android:fillColor="#000000" android:fillAlpha="0.45" android:pathData="M30,24h43c2,0 4,2 4,4v3H27v-4c0,-1.7 1.3,-3 3,-3z"/>
 </vector>

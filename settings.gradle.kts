@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NoMediaViewer"
+rootProject.name = "Yellow-gallery"
 include(":app")

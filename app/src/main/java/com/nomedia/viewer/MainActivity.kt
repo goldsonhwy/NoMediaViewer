@@ -149,7 +149,7 @@ class MainActivity : ComponentActivity() {
                     Box(Modifier.matchParentSize(), contentAlignment = Alignment.TopCenter) {
                         Surface(
                             modifier = Modifier.padding(top = 22.dp),
-                            color = Color(0xCC0F3460),
+                            color = Color(0xCC111111),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
                         ) {
                             Text(notice, color = Color.White, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
@@ -163,8 +163,8 @@ class MainActivity : ComponentActivity() {
                     Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
                         Surface(Modifier.matchParentSize(), color = DarkBackground) {}
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color(0xFFE94560), modifier = Modifier.padding(bottom = 14.dp))
-                            Text("涩图品鉴", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color(0xFFFFB000), modifier = Modifier.padding(bottom = 14.dp))
+                            Text("Yellow-gallery", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.padding(5.dp))
                             Text("正在进入…", color = Color(0xFFBDBDBD), fontSize = 12.sp)
                         }

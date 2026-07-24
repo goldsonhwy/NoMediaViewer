@@ -44,7 +44,7 @@ fun FullscreenViewer(image: ImageFile, isFavorite: Boolean, onToggleFavorite: ()
             Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null, tint = Color.White) }
                 Text(image.name, color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f), maxLines = 1)
-                IconButton(onClick = onToggleFavorite) { Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null, tint = if (isFavorite) Color(0xFFFF6B6B) else Color.White) }
+                IconButton(onClick = onToggleFavorite) { Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null, tint = if (isFavorite) Color(0xFFFFB000) else Color.White) }
             }
         }
         Surface(Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp), color = Color(0x66000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)) {
