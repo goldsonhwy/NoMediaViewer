@@ -44,6 +44,13 @@ class AppRepository(private val context: Context) {
         prefs.edit().putStringSet("network_roots", set).apply()
     }
     fun removeNetworkFolder(id: String) { prefs.edit().putStringSet("network_roots", (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).filterNot { it.startsWith("$id\u001f") }.toSet()).apply() }
+    fun setNetworkFolderEnabled(id: String, enabled: Boolean) {
+        val updated = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).map { raw ->
+            val p = raw.split("\u001f", limit = 7)
+            if (p.size == 7 && p[0] == id) p.take(6).plus(enabled.toString()).joinToString("\u001f") else raw
+        }.toSet()
+        prefs.edit().putStringSet("network_roots", updated).apply()
+    }
 
     fun scanAlbums(network: NetworkFolderManager? = null): List<FolderAlbum> {
         val grouped = mutableMapOf<String, MutableList<ImageFile>>()

@@ -3,6 +3,7 @@ package com.nomedia.viewer.ui
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +37,9 @@ fun SettingsScreen(
     onAddRoot: (Uri) -> Unit,
     onAddNetworkFolder: (com.nomedia.viewer.NetworkFolderType, String, String, String, String) -> Unit,
     onRemoveNetworkFolder: (String) -> Unit,
+    onNetworkEnabled: (String, Boolean) -> Unit,
+    onProbeNetwork: (com.nomedia.viewer.NetworkFolderType, String, String, String, (com.nomedia.viewer.NetworkProbeResult) -> Unit) -> Unit,
+    onScanLan: ((List<String>) -> Unit) -> Unit,
     onRootEnabled: (String, Boolean) -> Unit,
     onRemoveRoot: (String) -> Unit,
     resolvePath: (Uri) -> String?,
@@ -49,6 +53,9 @@ fun SettingsScreen(
     var netUrl by remember { mutableStateOf("") }
     var netUser by remember { mutableStateOf("") }
     var netPass by remember { mutableStateOf("") }
+    var probe by remember { mutableStateOf<com.nomedia.viewer.NetworkProbeResult?>(null) }
+    var lanIps by remember { mutableStateOf<List<String>>(emptyList()) }
+    var netBusy by remember { mutableStateOf(false) }
     var test by remember { mutableStateOf<String?>(null) }
     val addRoot = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { it?.let(onAddRoot) }
     val localPick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -88,12 +95,26 @@ fun SettingsScreen(
             Field(if (netType == com.nomedia.viewer.NetworkFolderType.WEBDAV) "WebDAV地址" else "SMB地址 smb://host/share/path", netUrl) { netUrl = it }
             Field("用户名", netUser) { netUser = it }
             Field("密码", netPass) { netPass = it }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { netBusy = true; onProbeNetwork(netType, netUrl, netUser, netPass) { probe = it; netUrl = it.normalizedUrl.ifBlank { netUrl }; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text(if (netBusy) "验证中..." else "验证并列目录") }
+                Button(onClick = { netBusy = true; onScanLan { lanIps = it; netBusy = false } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Text("扫描局域网") }
+            }
+            probe?.let { pr ->
+                Text(pr.message, color = if (pr.ok) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp)
+                pr.directories.take(8).forEach { dir ->
+                    Text(dir, color = Color(0xFFFFB000), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().clickable { netUrl = dir }.padding(vertical = 2.dp))
+                }
+            }
+            if (lanIps.isNotEmpty()) {
+                Text("发现设备：", color = Color.White, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { lanIps.take(4).forEach { ip -> AssistChip(onClick = { netUrl = ip }, label = { Text(ip) }) } }
+            }
             Button(onClick = {
                 if (netUrl.isNotBlank()) {
                     onAddNetworkFolder(netType, netName, netUrl, netUser, netPass)
-                    netName = ""; netUrl = ""; netUser = ""; netPass = ""
+                    netName = ""; netUrl = ""; netUser = ""; netPass = ""; probe = null
                 }
-            }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加网络文件夹") }
+            }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加当前网络文件夹") }
             Spacer(Modifier.height(8.dp))
             networkFolders.forEach { nf ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)), shape = RoundedCornerShape(10.dp)) {
@@ -102,6 +123,7 @@ fun SettingsScreen(
                             Text("${nf.type.name} · ${nf.name}", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(nf.url, color = Color(0xFFB0B0B0), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
+                        Switch(checked = nf.enabled, onCheckedChange = { onNetworkEnabled(nf.id, it) })
                         IconButton(onClick = { onRemoveNetworkFolder(nf.id) }) { Icon(Icons.Default.Delete, null, tint = Color(0x99FFB000)) }
                     }
                 }

@@ -13,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URI
 import java.net.URL
 import java.net.URLDecoder
@@ -31,6 +34,54 @@ class NetworkFolderManager(private val context: Context) {
             }
         }.getOrElse { emptyList() }
     }
+
+    suspend fun probe(type: NetworkFolderType, rawUrl: String, user: String, pass: String): NetworkProbeResult = withContext(Dispatchers.IO) {
+        when (type) {
+            NetworkFolderType.WEBDAV -> probeWebDav(rawUrl, user, pass)
+            NetworkFolderType.SMB -> probeSmb(rawUrl, user, pass)
+        }
+    }
+
+    suspend fun scanLanIps(): List<String> = withContext(Dispatchers.IO) {
+        val prefix = runCatching {
+            val ip = InetAddress.getLocalHost().hostAddress
+            ip.substringBeforeLast('.')
+        }.getOrDefault("192.168.1")
+        (1..254).mapNotNull { i ->
+            val host = "$prefix.$i"
+            if (isOpen(host, 80) || isOpen(host, 443) || isOpen(host, 445)) host else null
+        }
+    }
+
+    private fun probeWebDav(raw: String, user: String, pass: String): NetworkProbeResult {
+        val candidates = if (raw.startsWith("http://") || raw.startsWith("https://")) listOf(raw) else listOf("https://$raw", "http://$raw")
+        val errors = mutableListOf<String>()
+        for (u0 in candidates) {
+            val u = u0.trimEnd('/') + "/"
+            val dirs = runCatching { propfind(u, user, pass).map { resolveWebDavUrl(u, it) }.filter { it.endsWith('/') }.distinct().take(40) }.getOrNull()
+            if (dirs != null && dirs.isNotEmpty()) return NetworkProbeResult(true, "✅ WebDAV验证成功", u, dirs)
+            errors += "无法列目录：$u"
+        }
+        return NetworkProbeResult(false, errors.joinToString("\n"), candidates.firstOrNull().orEmpty())
+    }
+
+    private fun probeSmb(raw: String, user: String, pass: String): NetworkProbeResult {
+        val p = parseSmb(raw) ?: return NetworkProbeResult(false, "❌ SMB地址格式应为 smb://host/share/path", raw)
+        return runCatching {
+            SMBClient().use { client ->
+                client.connect(p.host).use { conn ->
+                    val ac = AuthenticationContext(user.ifBlank { "guest" }, pass.toCharArray(), p.domain)
+                    val session = conn.authenticate(ac)
+                    (session.connectShare(p.share) as DiskShare).use { share ->
+                        val dirs = share.list(p.path).filter { (it.fileAttributes and 0x10L) != 0L }.map { "smb://${p.host}/${p.share}/" + listOf(p.path, it.fileName).filter { s -> s.isNotBlank() }.joinToString("/") }.take(40)
+                        NetworkProbeResult(true, "✅ SMB验证成功", raw, dirs)
+                    }
+                }
+            }
+        }.getOrElse { NetworkProbeResult(false, "❌ ${it.localizedMessage ?: it.javaClass.simpleName}", raw) }
+    }
+
+    private fun isOpen(host: String, port: Int): Boolean = runCatching { Socket().use { it.connect(InetSocketAddress(host, port), 140); true } }.getOrDefault(false)
 
     private fun scanWebDav(folder: NetworkFolder): List<String> {
         val out = mutableListOf<String>()

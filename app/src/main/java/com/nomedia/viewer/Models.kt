@@ -49,6 +49,13 @@ data class NetworkFolder(
     val enabled: Boolean = true
 )
 
+data class NetworkProbeResult(
+    val ok: Boolean,
+    val message: String,
+    val normalizedUrl: String = "",
+    val directories: List<String> = emptyList()
+)
+
 data class RootFolder(
     val uri: String,
     val path: String,
