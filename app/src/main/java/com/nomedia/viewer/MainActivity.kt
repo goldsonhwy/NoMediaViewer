@@ -16,6 +16,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.*
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            Toast.makeText(this, "权限已获取，正在扫描...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "权限已获取 ✅", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "需要存储权限才能扫描 .nomedia 图片", Toast.LENGTH_LONG).show()
         }
@@ -48,13 +49,16 @@ class MainActivity : ComponentActivity() {
     private val requestManageStorageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        // Resume after permission screen
+        // Permission screen dismissed - check if granted and rescan
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                Toast.makeText(this, "权限已获取 ✅", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        requestPermissions()
 
         val repository = ImageRepository(applicationContext)
 
@@ -74,8 +78,12 @@ class MainActivity : ComponentActivity() {
                     factory = MainViewModel.Factory(repository)
                 )
                 val state by viewModel.state.collectAsState()
-
                 var selectedTab by remember { mutableStateOf(0) }
+
+                // Check permissions on first composition and request if needed
+                LaunchedEffect(Unit) {
+                    requestPermissions(viewModel)
+                }
 
                 Scaffold(
                     containerColor = DarkBackground,
@@ -158,14 +166,26 @@ class MainActivity : ComponentActivity() {
                                         textAlign = TextAlign.Center,
                                         fontSize = 15.sp
                                     )
-                                    Spacer(Modifier.height(24.dp))
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "请先授予存储权限，然后重新扫描",
+                                        color = TextSecondary,
+                                        textAlign = TextAlign.Center,
+                                        fontSize = 13.sp
+                                    )
+                                    Spacer(Modifier.height(16.dp))
                                     Button(
-                                        onClick = { viewModel.loadImages() },
+                                        onClick = {
+                                            requestPermissions(viewModel)
+                                            viewModel.loadImages()
+                                        },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = AccentBlue
                                         )
                                     ) {
-                                        Text("重新扫描")
+                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("授予权限并重新扫描")
                                     }
                                 }
                             }
@@ -180,7 +200,8 @@ class MainActivity : ComponentActivity() {
                                 isFavorite = { viewModel.isFavorite(it) },
                                 onToggleFavorite = { viewModel.toggleFavorite(it) },
                                 onMarkViewed = { viewModel.markAsViewed(it) },
-                                onReset = { viewModel.resetHistory() }
+                                onReset = { viewModel.resetHistory() },
+                                onScanAgain = { viewModel.loadImages() }
                             )
                         }
 
@@ -197,21 +218,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestPermissions() {
+    private fun requestPermissions(viewModel: MainViewModel? = null) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ needs MANAGE_EXTERNAL_STORAGE
+            // Android 11+ (API 30+): Need MANAGE_EXTERNAL_STORAGE
+            // Note: API 33+ is also API 30+, so this covers all modern Android
             if (!Environment.isExternalStorageManager()) {
                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
                     data = Uri.parse("package:$packageName")
                 }
                 requestManageStorageLauncher.launch(intent)
+            } else {
+                // Permission already granted, trigger scan
+                viewModel?.loadImages()
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ fine-grained media permissions
+            // Android 13+ specific media permissions (never reached in current logic,
+            // kept for completeness)
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
                 != PackageManager.PERMISSION_GRANTED
             ) {
                 requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                viewModel?.loadImages()
             }
         } else {
             // Android 10 and below
@@ -219,6 +247,8 @@ class MainActivity : ComponentActivity() {
                 != PackageManager.PERMISSION_GRANTED
             ) {
                 requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            } else {
+                viewModel?.loadImages()
             }
         }
     }

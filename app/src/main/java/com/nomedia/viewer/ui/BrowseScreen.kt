@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,7 +37,8 @@ fun BrowseScreen(
     isFavorite: (String) -> Boolean,
     onToggleFavorite: (String) -> Unit,
     onMarkViewed: (String) -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    onScanAgain: () -> Unit
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -54,7 +56,7 @@ fun BrowseScreen(
     }
 
     if (images.isEmpty()) {
-        // Empty state
+        // Empty state with scan button
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -68,25 +70,33 @@ fun BrowseScreen(
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "暂无图片",
+                    if (totalCount > 0) "全部已看完 ✓" else "暂无图片",
                     fontSize = 20.sp,
-                    color = Color(0xFF888888),
+                    color = if (totalCount > 0) Color(0xFF4CAF50) else Color(0xFF888888),
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "请确保存储权限已开启\n.nomedia 文件夹中的图片将在此显示",
+                    if (totalCount > 0) "点击重置可重新浏览所有图片" else "点击下方按钮重新扫描\n请确保已授予存储权限",
                     fontSize = 14.sp,
                     color = Color(0xFF666666),
                     textAlign = TextAlign.Center
                 )
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = onScanAgain,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F3460))
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (totalCount > 0) "重置浏览历史" else "重新扫描")
+                }
             }
         }
         return
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Seamless waterfall image list
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),

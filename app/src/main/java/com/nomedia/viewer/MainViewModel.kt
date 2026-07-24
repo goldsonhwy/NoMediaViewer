@@ -30,7 +30,8 @@ class MainViewModel(private val repository: ImageRepository) : ViewModel() {
     val state: StateFlow<BrowseState> = _state.asStateFlow()
 
     init {
-        loadImages()
+        // Don't auto-scan on init - wait for permission grant
+        _state.value = _state.value.copy(isLoading = false, error = "请授予存储权限后开始扫描")
     }
 
     fun loadImages() {
