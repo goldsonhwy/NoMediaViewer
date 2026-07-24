@@ -96,46 +96,27 @@ fun SettingsScreen(
         Section("收藏存储") {
             Row(verticalAlignment = Alignment.CenterVertically) { Text("自动备份收藏", color = Color.White, modifier = Modifier.weight(1f)); Switch(cfg.enabled, { cfg = cfg.copy(enabled = it) }) }
             if (cfg.enabled) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StorageType.values().forEach { t ->
-                        FilterChip(
-                            selected = cfg.type == t,
-                            onClick = { cfg = cfg.copy(type = t) },
-                            label = { Text(t.name) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFFFFB000),
-                                selectedLabelColor = Color.Black,
-                                containerColor = Color(0xFF202020),
-                                labelColor = Color(0xFFFFB000)
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = cfg.type == t,
-                                borderColor = Color(0xFFFFB000),
-                                selectedBorderColor = Color(0xFFFFB000)
-                            )
-                        )
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) { Text("本地文件夹", color = Color.White, modifier = Modifier.weight(1f)); Switch(cfg.localEnabled, { cfg = cfg.copy(localEnabled = it) }) }
+                if (cfg.localEnabled) {
+                    Button(onClick = { localPick.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.localPath.isBlank()) "选择本地存储目录" else "已选择本地目录") }
+                    if (cfg.localPath.isNotBlank()) Text(cfg.localPath, color = Color(0xFFB0B0B0), fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(10.dp))
-                when (cfg.type) {
-                    StorageType.LOCAL -> {
-                        Button(onClick = { localPick.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.localPath.isBlank()) "选择本地存储目录" else "已选择本地目录") }
-                        if (cfg.localPath.isNotBlank()) Text(cfg.localPath, color = Color(0xFFB0B0B0), fontSize = 11.sp)
-                    }
-                    StorageType.WEBDAV -> {
-                        Field("WebDAV地址", cfg.webdavUrl) { cfg = cfg.copy(webdavUrl = it) }
-                        Field("用户名", cfg.webdavUser) { cfg = cfg.copy(webdavUser = it) }
-                        Field("密码", cfg.webdavPass) { cfg = cfg.copy(webdavPass = it) }
-                        Button(onClick = { test = "测试中..."; onTestWebDav(cfg.webdavUrl, cfg.webdavUser, cfg.webdavPass) { test = it } }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.NetworkCheck, null); Spacer(Modifier.width(8.dp)); Text("自动测试http/https") }
-                        test?.let { Text(it, color = if (it.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp) }
-                    }
-                    StorageType.SMB -> {
-                        Field("SMB地址", cfg.smbUrl) { cfg = cfg.copy(smbUrl = it) }
-                        Field("用户名", cfg.smbUser) { cfg = cfg.copy(smbUser = it) }
-                        Field("密码", cfg.smbPass) { cfg = cfg.copy(smbPass = it) }
-                        Text("SMB为实验性，当前失败时会回退到本地收藏目录", color = Color(0xFF888888), fontSize = 11.sp)
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) { Text("WebDAV", color = Color.White, modifier = Modifier.weight(1f)); Switch(cfg.webdavEnabled, { cfg = cfg.copy(webdavEnabled = it) }) }
+                if (cfg.webdavEnabled) {
+                    Field("WebDAV地址", cfg.webdavUrl) { cfg = cfg.copy(webdavUrl = it) }
+                    Field("用户名", cfg.webdavUser) { cfg = cfg.copy(webdavUser = it) }
+                    Field("密码", cfg.webdavPass) { cfg = cfg.copy(webdavPass = it) }
+                    Button(onClick = { test = "测试中..."; onTestWebDav(cfg.webdavUrl, cfg.webdavUser, cfg.webdavPass) { test = it } }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020))) { Icon(Icons.Default.NetworkCheck, null); Spacer(Modifier.width(8.dp)); Text("自动测试http/https") }
+                    test?.let { Text(it, color = if (it.startsWith("✅")) Color(0xFF4CAF50) else Color(0xFFFFB000), fontSize = 12.sp) }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) { Text("SMB/Samba", color = Color.White, modifier = Modifier.weight(1f)); Switch(cfg.smbEnabled, { cfg = cfg.copy(smbEnabled = it) }) }
+                if (cfg.smbEnabled) {
+                    Field("SMB地址", cfg.smbUrl) { cfg = cfg.copy(smbUrl = it) }
+                    Field("用户名", cfg.smbUser) { cfg = cfg.copy(smbUser = it) }
+                    Field("密码", cfg.smbPass) { cfg = cfg.copy(smbPass = it) }
+                    Text("SMB为实验性；当前会复制到本地 SMB 备份目录", color = Color(0xFFB0B0B0), fontSize = 11.sp)
                 }
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("保存存储设置") }

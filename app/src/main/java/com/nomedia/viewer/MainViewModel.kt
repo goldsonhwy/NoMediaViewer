@@ -22,6 +22,7 @@ data class AppState(
     val viewed: Set<String> = emptySet(),
     val favorites: Set<String> = emptySet(),
     val columns: Int = 1,
+    val favoriteColumns: Int = 2,
     val bottomBarVisible: Boolean = true,
     val loading: Boolean = false,
     val message: String? = null,
@@ -42,7 +43,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun reloadBasics() {
         _state.value = _state.value.copy(
             roots = repo.roots(), favorites = repo.favorites(), viewed = repo.viewed(),
-            columns = repo.columns(), storageConfig = repo.storageConfig()
+            columns = repo.columns(), favoriteColumns = repo.favoriteColumns(), storageConfig = repo.storageConfig()
         )
     }
 
@@ -144,6 +145,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun favoriteImages(): List<ImageFile> = repo.favoriteImages()
     fun isFavorite(path: String): Boolean = path in repo.favorites()
     fun setColumns(c: Int) { repo.setColumns(c); _state.value = _state.value.copy(columns = repo.columns()) }
+    fun setFavoriteColumns(c: Int) { repo.setFavoriteColumns(c); _state.value = _state.value.copy(favoriteColumns = repo.favoriteColumns()) }
     fun setBottomVisible(v: Boolean) { if (_state.value.bottomBarVisible != v) _state.value = _state.value.copy(bottomBarVisible = v) }
     fun saveStorage(c: StorageConfig) { repo.saveStorage(c); _state.value = _state.value.copy(storageConfig = c, message = "已保存设置") }
     fun testWebDav(url: String, user: String, pass: String, cb: (String) -> Unit) = viewModelScope.launch { cb(storage.testWebDavAuto(url, user, pass)) }

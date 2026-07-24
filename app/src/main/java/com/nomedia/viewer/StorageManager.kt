@@ -16,20 +16,23 @@ class StorageManager(private val context: Context) {
         if (!config.enabled) return@withContext Result.failure(Exception("未启用存储"))
         runCatching {
             val relative = relativePath(imagePath, rootPaths)
-            when (config.type) {
-                StorageType.LOCAL -> saveLocal(imagePath, relative, config.localPath)
-                StorageType.WEBDAV -> saveWebDav(imagePath, relative, config)
-                StorageType.SMB -> saveLocal(imagePath, relative, File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
-            }
+            val copied = mutableListOf<String>()
+            if (config.localEnabled) copied += saveLocal(imagePath, relative, config.localPath)
+            if (config.webdavEnabled) copied += saveWebDav(imagePath, relative, config)
+            if (config.smbEnabled) copied += saveLocal(imagePath, relative, File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏/SMB").absolutePath)
+            if (copied.isEmpty()) copied += saveLocal(imagePath, relative, config.localPath)
+            copied.joinToString("|")
         }
     }
 
     suspend fun deleteFavoriteCopy(copiedPathOrUrl: String, config: StorageConfig): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             if (copiedPathOrUrl.isBlank()) return@runCatching
-            when (config.type) {
-                StorageType.LOCAL, StorageType.SMB -> File(copiedPathOrUrl).takeIf { it.exists() }?.delete()
-                StorageType.WEBDAV -> deleteWebDav(copiedPathOrUrl, config)
+            copiedPathOrUrl.split('|').filter { it.isNotBlank() }.forEach { target ->
+                when {
+                    target.startsWith("http://") || target.startsWith("https://") -> deleteWebDav(target, config)
+                    else -> File(target).takeIf { it.exists() }?.delete()
+                }
             }
             Unit
         }

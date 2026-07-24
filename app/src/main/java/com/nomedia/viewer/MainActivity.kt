@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(36.dp)
+                                        .height(42.dp)
                                         .padding(horizontal = 6.dp, vertical = 4.dp),
                                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -133,6 +133,7 @@ class MainActivity : ComponentActivity() {
                                 title = state.browsingTitle,
                                 images = state.images,
                                 columns = state.columns,
+                                onColumnsChange = { vm.setColumns(it) },
                                 isFavorite = { vm.isFavorite(it) },
                                 isRead = { it in state.viewed },
                                 onFavorite = { vm.toggleFavorite(it) },
@@ -166,7 +167,12 @@ class MainActivity : ComponentActivity() {
                                     onAlbumLongClick = { vm.unmarkAlbumRead(it) }
                                 )
                             }
-                            3 -> FavoritesScreen(vm.favoriteImages(), onImageClick = { vm.openFullscreen(it) })
+                            3 -> FavoritesScreen(
+                                favorites = vm.favoriteImages(),
+                                columns = state.favoriteColumns,
+                                onColumnsChange = { vm.setFavoriteColumns(it) },
+                                onImageClick = { vm.openFullscreen(it) }
+                            )
                             4 -> SettingsScreen(
                                 roots = state.roots,
                                 storageConfig = state.storageConfig,

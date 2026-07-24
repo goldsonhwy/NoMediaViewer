@@ -3,9 +3,11 @@ package com.nomedia.viewer.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -33,6 +35,7 @@ fun BrowseScreen(
     title: String,
     images: List<ImageFile>,
     columns: Int,
+    onColumnsChange: (Int) -> Unit,
     isFavorite: (String) -> Boolean,
     isRead: (String) -> Boolean,
     onFavorite: (String) -> Unit,
@@ -49,9 +52,21 @@ fun BrowseScreen(
         return
     }
     var dragX by remember { mutableFloatStateOf(0f) }
+    var lastZoomChange by remember { mutableLongStateOf(0L) }
     Box(
         Modifier
             .fillMaxSize()
+            .pointerInput(columns) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    val now = System.currentTimeMillis()
+                    if (now - lastZoomChange > 260) {
+                        when {
+                            zoom < 0.92f -> { onColumnsChange((columns + 1).coerceAtMost(5)); lastZoomChange = now }
+                            zoom > 1.08f -> { onColumnsChange((columns - 1).coerceAtLeast(1)); lastZoomChange = now }
+                        }
+                    }
+                }
+            }
             .pointerInput(images) {
                 detectDragGestures(
                     onDragStart = { dragX = 0f },
@@ -102,7 +117,15 @@ private fun MultiColumn(images: List<ImageFile>, columns: Int, isFavorite: (Stri
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(1.dp), verticalArrangement = Arrangement.spacedBy(1.dp)
-    ) { itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) } }
+    ) {
+        itemsIndexed(
+            images,
+            key = { _, it -> it.path },
+            span = { _, img -> if (img.width > img.height && columns > 1) GridItemSpan(columns) else GridItemSpan(1) }
+        ) { _, img ->
+            ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull)
+        }
+    }
 }
 
 @Composable

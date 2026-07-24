@@ -2,6 +2,7 @@ package com.nomedia.viewer
 
 import android.content.Context
 import android.net.Uri
+import android.graphics.BitmapFactory
 import java.io.File
 
 class AppRepository(private val context: Context) {
@@ -61,9 +62,7 @@ class AppRepository(private val context: Context) {
         files.forEach { f ->
             if (f.isDirectory) scanDir(f, grouped, depth + 1)
             else if (f.isFile && f.extension.lowercase() in imageExt) {
-                grouped.getOrPut(f.parentFile?.absolutePath ?: dir.absolutePath) { mutableListOf() }.add(
-                    ImageFile(f.absolutePath, f.name, f.parentFile?.absolutePath ?: dir.absolutePath, f.length(), f.lastModified())
-                )
+                grouped.getOrPut(f.parentFile?.absolutePath ?: dir.absolutePath) { mutableListOf() }.add(toImageFile(f))
             }
         }
     }
@@ -74,7 +73,7 @@ class AppRepository(private val context: Context) {
         files.forEach { f ->
             if (f.isDirectory) scanDirFlat(f, out, depth + 1)
             else if (f.isFile && f.extension.lowercase() in imageExt) {
-                out.add(ImageFile(f.absolutePath, f.name, f.parentFile?.absolutePath ?: dir.absolutePath, f.length(), f.lastModified()))
+                out.add(toImageFile(f))
             }
         }
     }
@@ -96,15 +95,34 @@ class AppRepository(private val context: Context) {
     fun clearFavoriteCopyPath(path: String) = prefs.edit().remove("favorite_copy_${path.hashCode()}").apply()
     fun favoriteImages(): List<ImageFile> = favorites().mapNotNull { p ->
         val f = File(p)
-        if (f.exists()) ImageFile(f.absolutePath, f.name, f.parentFile?.absolutePath ?: "", f.length(), f.lastModified()) else null
+        if (f.exists()) toImageFile(f) else null
     }.sortedByDescending { it.lastModified }
 
     fun columns(): Int = prefs.getInt("columns", 1).coerceIn(1, 5)
     fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 5)).apply()
+    fun favoriteColumns(): Int = prefs.getInt("favorite_columns", 2).coerceIn(1, 5)
+    fun setFavoriteColumns(v: Int) = prefs.edit().putInt("favorite_columns", v.coerceIn(1, 5)).apply()
+
+    private fun toImageFile(f: File): ImageFile {
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        runCatching { BitmapFactory.decodeFile(f.absolutePath, opts) }
+        return ImageFile(
+            f.absolutePath,
+            f.name,
+            f.parentFile?.absolutePath ?: "",
+            f.length(),
+            f.lastModified(),
+            opts.outWidth.coerceAtLeast(0),
+            opts.outHeight.coerceAtLeast(0)
+        )
+    }
 
     fun storageConfig(): StorageConfig = StorageConfig(
         enabled = prefs.getBoolean("storage_enabled", false),
         type = runCatching { StorageType.valueOf(prefs.getString("storage_type", "LOCAL")!!) }.getOrDefault(StorageType.LOCAL),
+        localEnabled = prefs.getBoolean("storage_local_enabled", true),
+        webdavEnabled = prefs.getBoolean("storage_webdav_enabled", false),
+        smbEnabled = prefs.getBoolean("storage_smb_enabled", false),
         localUri = prefs.getString("local_uri", "") ?: "",
         localPath = prefs.getString("local_path", "") ?: "",
         webdavUrl = prefs.getString("webdav_url", "") ?: "",
@@ -116,6 +134,7 @@ class AppRepository(private val context: Context) {
     )
     fun saveStorage(c: StorageConfig) = prefs.edit()
         .putBoolean("storage_enabled", c.enabled).putString("storage_type", c.type.name)
+        .putBoolean("storage_local_enabled", c.localEnabled).putBoolean("storage_webdav_enabled", c.webdavEnabled).putBoolean("storage_smb_enabled", c.smbEnabled)
         .putString("local_uri", c.localUri).putString("local_path", c.localPath)
         .putString("webdav_url", c.webdavUrl).putString("webdav_user", c.webdavUser).putString("webdav_pass", c.webdavPass)
         .putString("smb_url", c.smbUrl).putString("smb_user", c.smbUser).putString("smb_pass", c.smbPass).apply()

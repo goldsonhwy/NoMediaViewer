@@ -5,7 +5,9 @@ data class ImageFile(
     val name: String,
     val parentPath: String,
     val size: Long,
-    val lastModified: Long
+    val lastModified: Long,
+    val width: Int = 0,
+    val height: Int = 0
 )
 
 data class FolderAlbum(
@@ -22,6 +24,9 @@ enum class StorageType { LOCAL, WEBDAV, SMB }
 data class StorageConfig(
     val enabled: Boolean = false,
     val type: StorageType = StorageType.LOCAL,
+    val localEnabled: Boolean = true,
+    val webdavEnabled: Boolean = false,
+    val smbEnabled: Boolean = false,
     val localUri: String = "",
     val localPath: String = "",
     val webdavUrl: String = "",
