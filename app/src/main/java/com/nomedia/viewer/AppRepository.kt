@@ -53,7 +53,7 @@ class AppRepository(private val context: Context) {
     fun scanImages(paths: List<String>): List<ImageFile> {
         val all = mutableListOf<ImageFile>()
         paths.distinct().forEach { scanDirFlat(File(it), all, 0) }
-        return all.sortedByDescending { it.lastModified }
+        return all.sortedWith(compareBy<ImageFile> { it.width > it.height }.thenByDescending { it.lastModified })
     }
 
     private fun scanDir(dir: File, grouped: MutableMap<String, MutableList<ImageFile>>, depth: Int) {
@@ -96,7 +96,7 @@ class AppRepository(private val context: Context) {
     fun favoriteImages(): List<ImageFile> = favorites().mapNotNull { p ->
         val f = File(p)
         if (f.exists()) toImageFile(f) else null
-    }.sortedByDescending { it.lastModified }
+    }.sortedWith(compareBy<ImageFile> { it.width > it.height }.thenByDescending { it.lastModified })
 
     fun columns(): Int = prefs.getInt("columns", 1).coerceIn(1, 6)
     fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 6)).apply()

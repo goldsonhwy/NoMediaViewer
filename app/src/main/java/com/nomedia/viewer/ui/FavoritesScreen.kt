@@ -48,6 +48,7 @@ fun FavoritesScreen(
         columns = GridCells.Fixed(columns.coerceIn(1, 6)),
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFF8A6500))
             .pointerInput(columns) {
                 detectTransformGestures { _, _, zoom, _ ->
                     val now = System.currentTimeMillis()

@@ -29,7 +29,9 @@ fun SettingsScreen(
     roots: List<RootFolder>,
     storageConfig: StorageConfig,
     columns: Int,
+    favoriteColumns: Int,
     onColumns: (Int) -> Unit,
+    onFavoriteColumns: (Int) -> Unit,
     onAddRoot: (Uri) -> Unit,
     onRootEnabled: (String, Boolean) -> Unit,
     onRemoveRoot: (String) -> Unit,
@@ -85,6 +87,30 @@ fun SettingsScreen(
                         border = FilterChipDefaults.filterChipBorder(
                             enabled = true,
                             selected = columns == n,
+                            borderColor = Color(0xFFFFB000),
+                            selectedBorderColor = Color(0xFFFFB000)
+                        )
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Section("收藏布局") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                (1..6).forEach { n ->
+                    FilterChip(
+                        selected = favoriteColumns == n,
+                        onClick = { onFavoriteColumns(n) },
+                        label = { Text("${n}列") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFFFB000),
+                            selectedLabelColor = Color.Black,
+                            containerColor = Color(0xFF202020),
+                            labelColor = Color(0xFFFFB000)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = favoriteColumns == n,
                             borderColor = Color(0xFFFFB000),
                             selectedBorderColor = Color(0xFFFFB000)
                         )

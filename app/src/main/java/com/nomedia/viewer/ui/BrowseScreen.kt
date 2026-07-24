@@ -97,7 +97,7 @@ private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, is
             if (idx > 0 && idx - 1 in images.indices) onViewed(images[idx - 1].path)
         }
     }
-    LazyColumn(state = state, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+    LazyColumn(state = state, modifier = Modifier.fillMaxSize().background(Color(0xFF8A6500)), verticalArrangement = Arrangement.spacedBy(1.dp)) {
         itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
 }
@@ -115,7 +115,7 @@ private fun MultiColumn(images: List<ImageFile>, columns: Int, isFavorite: (Stri
         }
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize(),
+        columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize().background(Color(0xFF8A6500)),
         horizontalArrangement = Arrangement.spacedBy(1.dp), verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
         itemsIndexed(

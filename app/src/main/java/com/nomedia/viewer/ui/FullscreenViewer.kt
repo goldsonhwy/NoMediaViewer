@@ -62,7 +62,6 @@ fun FullscreenViewer(
                         onDrag = { change, amount -> drag += amount; change.consume() },
                         onDragEnd = {
                             when {
-                                abs(drag.y) > 180f && abs(drag.y) > abs(drag.x) -> onDismiss()
                                 drag.x < -140f && abs(drag.x) > abs(drag.y) -> onNext()
                                 drag.x > 140f && abs(drag.x) > abs(drag.y) -> onPrevious()
                             }
@@ -71,9 +70,9 @@ fun FullscreenViewer(
                         onDragCancel = { drag = Offset.Zero }
                     )
                 }
-                .pointerInput(image.path) { detectTransformGestures { _, pan, zoom, _ ->
+                .pointerInput(image.path) { detectTransformGestures { _, _, zoom, _ ->
                     scale = (scale * zoom).coerceIn(1f, 5f)
-                    if (scale <= 1.05f) { offsetY += pan.y; if (abs(offsetY) > 260f) onDismiss() } else offsetY = 0f
+                    offsetY = 0f
                 } },
             contentScale = ContentScale.Fit
         )
@@ -85,7 +84,7 @@ fun FullscreenViewer(
             }
         }
         Surface(Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp), color = Color(0x66000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)) {
-            Text("左右滑/边缘点击=上一张/下一张  上下拉/返回=退出", color = Color(0xCCFFFFFF), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp))
+            Text("左滑/右边缘=下一张  右滑/左边缘=上一张  返回键=退出", color = Color(0xCCFFFFFF), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp))
         }
     }
 }
