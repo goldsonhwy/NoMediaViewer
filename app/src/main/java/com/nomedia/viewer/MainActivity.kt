@@ -12,17 +12,26 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,140 +39,88 @@ import com.nomedia.viewer.ui.*
 import com.nomedia.viewer.ui.theme.*
 
 class MainActivity : ComponentActivity() {
-
-    private val requestManageStorageLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (Environment.isExternalStorageManager()) {
-                Toast.makeText(this, "权限已获取 ✅", Toast.LENGTH_SHORT).show()
-            }
-        }
+    private val manageStorageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) Toast.makeText(this, "权限已获取", Toast.LENGTH_SHORT).show()
     }
-
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) Toast.makeText(this, "权限已获取 ✅", Toast.LENGTH_SHORT).show()
-        else Toast.makeText(this, "需要存储权限才能扫描图片", Toast.LENGTH_LONG).show()
+    private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        Toast.makeText(this, if (granted) "权限已获取" else "需要存储权限", Toast.LENGTH_SHORT).show()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val repository = ImageRepository(applicationContext)
-        val folderManager = FolderManager(applicationContext)
-        val storageManager = StorageManager(applicationContext)
-
+        val repo = AppRepository(applicationContext)
+        val storage = StorageManager(applicationContext)
         setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = AccentBlue, secondary = AccentGold,
-                    background = DarkBackground, surface = DarkSurface,
-                    onPrimary = TextPrimary, onBackground = TextPrimary, onSurface = TextPrimary
-                )
-            ) {
-                val viewModel: MainViewModel = viewModel(
-                    factory = MainViewModel.Factory(repository, folderManager, storageManager)
-                )
-                val state by viewModel.state.collectAsState()
-
+            MaterialTheme(colorScheme = darkColorScheme(primary = AccentBlue, secondary = AccentGold, background = DarkBackground, surface = DarkSurface, onBackground = TextPrimary, onSurface = TextPrimary)) {
+                val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(repo, storage))
+                val state by vm.state.collectAsState()
                 LaunchedEffect(Unit) { checkPermissions() }
 
-                // Fullscreen overlay
-                if (state.fullscreenImage != null) {
-                    FullscreenViewer(
-                        image = state.fullscreenImage!!,
-                        isFavorite = viewModel.isFavorite(state.fullscreenImage!!.uri),
-                        onToggleFavorite = { viewModel.toggleFavorite(state.fullscreenImage!!.uri) },
-                        onDismiss = { viewModel.closeFullscreen() }
-                    )
+                state.fullscreenImage?.let { img ->
+                    FullscreenViewer(img, vm.isFavorite(img.path), onToggleFavorite = { vm.toggleFavorite(img.path) }, onDismiss = { vm.closeFullscreen() })
                     return@MaterialTheme
                 }
 
                 val tabs = listOf(
-                    TabItem2("浏览", Icons.Default.PhotoLibrary, Icons.Outlined.Image),
-                    TabItem2("文件夹", Icons.Default.Folder, Icons.Outlined.Folder),
-                    TabItem2("收藏", Icons.Default.Favorite, Icons.Outlined.FavoriteBorder),
-                    TabItem2("设置", Icons.Default.Settings, Icons.Outlined.Settings)
+                    TabItem("浏览", Icons.Default.PhotoLibrary, Icons.Outlined.Image),
+                    TabItem("文件夹", Icons.Default.Folder, Icons.Outlined.Folder),
+                    TabItem("收藏", Icons.Default.Favorite, Icons.Outlined.FavoriteBorder),
+                    TabItem("设置", Icons.Default.Settings, Icons.Outlined.Settings)
                 )
-
                 Scaffold(
                     containerColor = DarkBackground,
                     bottomBar = {
-                        AnimatedVisibility(
-                            visible = state.showBottomBar,
-                            enter = slideInVertically { it } + fadeIn(),
-                            exit = slideOutVertically { it } + fadeOut()
-                        ) {
-                            NavigationBar(
-                                containerColor = DarkSurface,
-                                contentColor = TextPrimary
-                            ) {
-                                tabs.forEachIndexed { index, tab ->
+                        AnimatedVisibility(visible = state.bottomBarVisible, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+                            NavigationBar(containerColor = DarkSurface) {
+                                tabs.forEachIndexed { idx, tab ->
                                     NavigationBarItem(
-                                        icon = {
-                                            Icon(
-                                                if (state.currentTab == index) tab.selectedIcon else tab.unselectedIcon,
-                                                contentDescription = null
-                                            )
-                                        },
+                                        selected = state.currentTab == idx,
+                                        onClick = { vm.setTab(idx) },
+                                        icon = { Icon(if (state.currentTab == idx) tab.selectedIcon else tab.unselectedIcon, null) },
                                         label = { Text(tab.label, fontSize = 11.sp) },
-                                        selected = state.currentTab == index,
-                                        onClick = { viewModel.setTab(index) },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AccentGold, selectedTextColor = AccentGold,
-                                            unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary,
-                                            indicatorColor = AccentBlue
-                                        )
+                                        colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentGold, selectedTextColor = AccentGold, unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary, indicatorColor = AccentBlue)
                                     )
                                 }
                             }
                         }
                     }
-                ) { paddingValues ->
-                    Box(modifier = Modifier.padding(paddingValues)) {
+                ) { pad ->
+                    Box(Modifier.padding(pad)) {
                         when (state.currentTab) {
                             0 -> BrowseScreen(
-                                images = if (state.unviewedImages.isNotEmpty()) state.unviewedImages else state.images,
-                                unviewedCount = state.unviewedImages.size, totalCount = state.images.size,
-                                columnCount = state.columnCount,
-                                isFavorite = { viewModel.isFavorite(it) },
-                                onToggleFavorite = { viewModel.toggleFavorite(it) },
-                                onMarkViewed = { viewModel.markAsViewed(it) },
-                                onReset = { viewModel.resetHistory() },
-                                onScanAgain = { viewModel.scanFolderGroups() },
-                                onScrollUp = { viewModel.setShowBottomBar(false) },
-                                onScrollDown = { viewModel.setShowBottomBar(true) },
-                                onBack = { viewModel.setTab(1) }
+                                title = state.browsingTitle,
+                                images = state.images,
+                                unviewed = state.unviewed,
+                                columns = state.columns,
+                                isFavorite = { vm.isFavorite(it) },
+                                onFavorite = { vm.toggleFavorite(it) },
+                                onViewed = { vm.markViewed(it) },
+                                onReset = { vm.resetViewed() },
+                                onBack = { vm.setTab(1) },
+                                onScrollUp = { vm.setBottomVisible(false) },
+                                onScrollDown = { vm.setBottomVisible(true) }
                             )
-
                             1 -> FolderBrowserScreen(
-                                folderGroups = state.folderGroups,
-                                selectedPaths = state.selectedFolderPaths,
-                                onFolderClick = { path -> viewModel.browseFolder(path) },
-                                onFolderLongClick = { path -> viewModel.toggleFolderSelection(path) },
-                                onMergeBrowse = {
-                                    val paths = state.selectedFolderPaths.toList()
-                                    viewModel.browseMergedFolders(paths)
-                                    viewModel.clearFolderSelection()
-                                },
-                                onClearSelection = { viewModel.clearFolderSelection() }
+                                albums = state.albums,
+                                selectedPaths = state.selectedAlbumPaths,
+                                loading = state.loading,
+                                message = state.message,
+                                onAlbumClick = { vm.browseAlbum(it) },
+                                onAlbumLongClick = { vm.toggleAlbum(it) },
+                                onMergeBrowse = { vm.browseSelectedAlbums() }
                             )
-
-                            2 -> FavoritesScreen(
-                                favorites = viewModel.getFavoriteImages(),
-                                isFavorite = { viewModel.isFavorite(it) },
-                                onToggleFavorite = { viewModel.toggleFavorite(it) },
-                                onImageClick = { viewModel.openFullscreen(it) }
-                            )
-
+                            2 -> FavoritesScreen(vm.favoriteImages(), onImageClick = { vm.openFullscreen(it) })
                             3 -> SettingsScreen(
-                                storageConfig = viewModel.getStorageConfig(),
-                                columnCount = state.columnCount,
-                                onColumnCountChange = { viewModel.setColumnCount(it) },
-                                onFolderAdded = { uri -> viewModel.addFolder(uri) },
-                                onSave = { viewModel.saveStorageConfig(it) }
+                                roots = state.roots,
+                                storageConfig = state.storageConfig,
+                                columns = state.columns,
+                                onColumns = { vm.setColumns(it) },
+                                onAddRoot = { vm.addRoot(it) },
+                                onRootEnabled = { uri, en -> vm.setRootEnabled(uri, en) },
+                                onRemoveRoot = { vm.removeRoot(it) },
+                                resolvePath = { vm.pathFromUri(it) },
+                                onSaveStorage = { vm.saveStorage(it) },
+                                onTestWebDav = { url, user, pass, cb -> vm.testWebDav(url, user, pass, cb) }
                             )
                         }
                     }
@@ -174,26 +131,11 @@ class MainActivity : ComponentActivity() {
 
     private fun checkPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-                requestManageStorageLauncher.launch(intent)
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
-            }
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
+            if (!Environment.isExternalStorageManager()) manageStorageLauncher.launch(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply { data = Uri.parse("package:$packageName") })
+        } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
 }
 
-data class TabItem2(
-    val label: String,
-    val selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    val unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector
-)
+data class TabItem(val label: String, val selectedIcon: androidx.compose.ui.graphics.vector.ImageVector, val unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector)

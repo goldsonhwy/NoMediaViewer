@@ -1,0 +1,137 @@
+package com.nomedia.viewer
+
+import android.content.Context
+import android.net.Uri
+import java.io.File
+
+class AppRepository(private val context: Context) {
+    private val prefs = context.getSharedPreferences("setu_pinjian_v10", Context.MODE_PRIVATE)
+    private val imageExt = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
+
+    fun addRoot(uri: Uri): RootFolder? {
+        persistRead(uri)
+        val uriStr = uri.toString()
+        val path = uriToPath(uriStr) ?: return null
+        val roots = prefs.getStringSet("roots", emptySet())!!.toMutableSet()
+        roots.add(uriStr)
+        prefs.edit().putStringSet("roots", roots).putBoolean(enabledKey(uriStr), true).apply()
+        return RootFolder(uriStr, path, File(path).name.ifBlank { path }, true)
+    }
+
+    fun roots(): List<RootFolder> = (prefs.getStringSet("roots", emptySet()) ?: emptySet()).mapNotNull { uriStr ->
+        val path = uriToPath(uriStr) ?: return@mapNotNull null
+        RootFolder(uriStr, path, File(path).name.ifBlank { path }, prefs.getBoolean(enabledKey(uriStr), true))
+    }
+
+    fun setRootEnabled(uri: String, enabled: Boolean) = prefs.edit().putBoolean(enabledKey(uri), enabled).apply()
+    fun removeRoot(uri: String) {
+        val roots = prefs.getStringSet("roots", emptySet())!!.toMutableSet()
+        roots.remove(uri)
+        prefs.edit().putStringSet("roots", roots).remove(enabledKey(uri)).apply()
+    }
+
+    fun enabledRootPaths(): List<String> = roots().filter { it.enabled }.map { it.path }
+
+    fun scanAlbums(): List<FolderAlbum> {
+        val grouped = mutableMapOf<String, MutableList<ImageFile>>()
+        enabledRootPaths().forEach { root -> scanDir(File(root), grouped, 0) }
+        return grouped.values.mapNotNull { list ->
+            val sorted = list.sortedByDescending { it.lastModified }
+            val first = sorted.firstOrNull() ?: return@mapNotNull null
+            FolderAlbum(
+                path = first.parentPath,
+                name = File(first.parentPath).name.ifBlank { first.parentPath },
+                coverPath = first.path,
+                count = list.size,
+                latestModified = first.lastModified
+            )
+        }.sortedWith(compareByDescending<FolderAlbum> { it.latestModified }.thenBy { it.name.lowercase() })
+    }
+
+    fun scanImages(paths: List<String>): List<ImageFile> {
+        val all = mutableListOf<ImageFile>()
+        paths.distinct().forEach { scanDirFlat(File(it), all, 0) }
+        return all.sortedByDescending { it.lastModified }
+    }
+
+    private fun scanDir(dir: File, grouped: MutableMap<String, MutableList<ImageFile>>, depth: Int) {
+        if (depth > 30 || !dir.exists() || !dir.isDirectory || !dir.canRead()) return
+        val files = runCatching { dir.listFiles() }.getOrNull() ?: return
+        files.forEach { f ->
+            if (f.isDirectory) scanDir(f, grouped, depth + 1)
+            else if (f.isFile && f.extension.lowercase() in imageExt) {
+                grouped.getOrPut(f.parentFile?.absolutePath ?: dir.absolutePath) { mutableListOf() }.add(
+                    ImageFile(f.absolutePath, f.name, f.parentFile?.absolutePath ?: dir.absolutePath, f.length(), f.lastModified())
+                )
+            }
+        }
+    }
+
+    private fun scanDirFlat(dir: File, out: MutableList<ImageFile>, depth: Int) {
+        if (depth > 30 || !dir.exists() || !dir.isDirectory || !dir.canRead()) return
+        val files = runCatching { dir.listFiles() }.getOrNull() ?: return
+        files.forEach { f ->
+            if (f.isDirectory) scanDirFlat(f, out, depth + 1)
+            else if (f.isFile && f.extension.lowercase() in imageExt) {
+                out.add(ImageFile(f.absolutePath, f.name, f.parentFile?.absolutePath ?: dir.absolutePath, f.length(), f.lastModified()))
+            }
+        }
+    }
+
+    fun viewed(): Set<String> = prefs.getStringSet("viewed", emptySet()) ?: emptySet()
+    fun markViewed(path: String) = prefs.edit().putStringSet("viewed", viewed().toMutableSet().also { it.add(path) }).apply()
+    fun resetViewed() = prefs.edit().remove("viewed").apply()
+
+    fun favorites(): Set<String> = prefs.getStringSet("favorites", emptySet()) ?: emptySet()
+    fun toggleFavorite(path: String): Boolean {
+        val set = favorites().toMutableSet()
+        val added = if (path in set) { set.remove(path); false } else { set.add(path); true }
+        prefs.edit().putStringSet("favorites", set).apply()
+        return added
+    }
+    fun favoriteImages(): List<ImageFile> = favorites().mapNotNull { p ->
+        val f = File(p)
+        if (f.exists()) ImageFile(f.absolutePath, f.name, f.parentFile?.absolutePath ?: "", f.length(), f.lastModified()) else null
+    }.sortedByDescending { it.lastModified }
+
+    fun columns(): Int = prefs.getInt("columns", 1).coerceIn(1, 2)
+    fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 2)).apply()
+
+    fun storageConfig(): StorageConfig = StorageConfig(
+        enabled = prefs.getBoolean("storage_enabled", false),
+        type = runCatching { StorageType.valueOf(prefs.getString("storage_type", "LOCAL")!!) }.getOrDefault(StorageType.LOCAL),
+        localUri = prefs.getString("local_uri", "") ?: "",
+        localPath = prefs.getString("local_path", "") ?: "",
+        webdavUrl = prefs.getString("webdav_url", "") ?: "",
+        webdavUser = prefs.getString("webdav_user", "") ?: "",
+        webdavPass = prefs.getString("webdav_pass", "") ?: "",
+        smbUrl = prefs.getString("smb_url", "") ?: "",
+        smbUser = prefs.getString("smb_user", "") ?: "",
+        smbPass = prefs.getString("smb_pass", "") ?: ""
+    )
+    fun saveStorage(c: StorageConfig) = prefs.edit()
+        .putBoolean("storage_enabled", c.enabled).putString("storage_type", c.type.name)
+        .putString("local_uri", c.localUri).putString("local_path", c.localPath)
+        .putString("webdav_url", c.webdavUrl).putString("webdav_user", c.webdavUser).putString("webdav_pass", c.webdavPass)
+        .putString("smb_url", c.smbUrl).putString("smb_user", c.smbUser).putString("smb_pass", c.smbPass).apply()
+
+    fun uriToPath(uriStr: String): String? {
+        val uri = Uri.parse(uriStr)
+        val seg = uri.lastPathSegment ?: return null
+        val decoded = Uri.decode(seg)
+        val clean = decoded.removePrefix("tree/")
+        return when {
+            clean.startsWith("primary:") -> "/storage/emulated/0/" + clean.removePrefix("primary:").trimStart('/')
+            ":" in clean -> {
+                val parts = clean.split(":", limit = 2)
+                "/storage/${parts[0]}/${parts.getOrElse(1) { "" }}".trimEnd('/')
+            }
+            else -> null
+        }
+    }
+
+    private fun persistRead(uri: Uri) = runCatching {
+        context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    private fun enabledKey(uri: String) = "root_enabled_${uri.hashCode()}"
+}

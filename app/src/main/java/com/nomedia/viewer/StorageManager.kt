@@ -1,150 +1,97 @@
 package com.nomedia.viewer
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Environment
-import androidx.documentfile.provider.DocumentFile
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-
-enum class StorageType {
-    LOCAL, WEBDAV, SMB
-}
-
-data class StorageConfig(
-    val type: StorageType = StorageType.LOCAL,
-    val localPath: String = "",
-    val webdavUrl: String = "",
-    val webdavUser: String = "",
-    val webdavPass: String = "",
-    val smbUrl: String = "",
-    val smbUser: String = "",
-    val smbPass: String = "",
-    val enabled: Boolean = false
-)
+import java.net.HttpURLConnection
+import java.net.URL
 
 class StorageManager(private val context: Context) {
-
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("storage", Context.MODE_PRIVATE)
-
-    fun getConfig(): StorageConfig {
-        return StorageConfig(
-            type = StorageType.valueOf(prefs.getString("storage_type", "LOCAL") ?: "LOCAL"),
-            localPath = prefs.getString("local_path", "") ?: "",
-            webdavUrl = prefs.getString("webdav_url", "") ?: "",
-            webdavUser = prefs.getString("webdav_user", "") ?: "",
-            webdavPass = prefs.getString("webdav_pass", "") ?: "",
-            smbUrl = prefs.getString("smb_url", "") ?: "",
-            smbUser = prefs.getString("smb_user", "") ?: "",
-            smbPass = prefs.getString("smb_pass", "") ?: "",
-            enabled = prefs.getBoolean("enabled", false)
-        )
-    }
-
-    fun saveConfig(config: StorageConfig) {
-        prefs.edit()
-            .putString("storage_type", config.type.name)
-            .putString("local_path", config.localPath)
-            .putString("webdav_url", config.webdavUrl)
-            .putString("webdav_user", config.webdavUser)
-            .putString("webdav_pass", config.webdavPass)
-            .putString("smb_url", config.smbUrl)
-            .putString("smb_user", config.smbUser)
-            .putString("smb_pass", config.smbPass)
-            .putBoolean("enabled", config.enabled)
-            .apply()
-    }
-
-    suspend fun saveFavoriteImage(imagePath: String, fileName: String): Result<String> {
-        val config = getConfig()
-        if (!config.enabled) return Result.failure(Exception("存储未启用"))
-
-        return withContext(Dispatchers.IO) {
-            try {
-                when (config.type) {
-                    StorageType.LOCAL -> saveToLocal(imagePath, fileName, config.localPath)
-                    StorageType.WEBDAV -> saveToWebdav(imagePath, fileName, config)
-                    StorageType.SMB -> saveToSmb(imagePath, fileName, config)
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
+    suspend fun saveFavoriteImage(imagePath: String, fileName: String, config: StorageConfig): Result<String> = withContext(Dispatchers.IO) {
+        if (!config.enabled) return@withContext Result.failure(Exception("未启用存储"))
+        runCatching {
+            when (config.type) {
+                StorageType.LOCAL -> saveLocal(imagePath, fileName, config.localPath)
+                StorageType.WEBDAV -> saveWebDav(imagePath, fileName, config)
+                StorageType.SMB -> saveLocal(imagePath, fileName, File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "涩图品鉴收藏").absolutePath)
             }
         }
     }
 
-    private fun saveToLocal(imagePath: String, fileName: String, destPath: String): Result<String> {
-        val destDir = if (destPath.isNotEmpty()) {
-            File(destPath)
-        } else {
-            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "NoMediaFavorites")
+    private fun saveLocal(imagePath: String, fileName: String, dirPath: String): String {
+        val src = File(imagePath)
+        require(src.exists()) { "源文件不存在" }
+        val dir = File(if (dirPath.isNotBlank()) dirPath else File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "涩图品鉴收藏").absolutePath)
+        if (!dir.exists()) dir.mkdirs()
+        var dst = File(dir, fileName)
+        var i = 1
+        while (dst.exists()) {
+            val stem = fileName.substringBeforeLast('.', fileName)
+            val ext = fileName.substringAfterLast('.', "")
+            dst = File(dir, if (ext.isBlank()) "${stem}_$i" else "${stem}_$i.$ext")
+            i++
         }
+        src.inputStream().use { input -> FileOutputStream(dst).use { input.copyTo(it) } }
+        return dst.absolutePath
+    }
 
-        if (!destDir.exists()) destDir.mkdirs()
-
-        val sourceFile = File(imagePath)
-        if (!sourceFile.exists()) return Result.failure(Exception("源文件不存在"))
-
-        val destFile = File(destDir, fileName)
-        // Avoid overwrite
-        var finalFile = destFile
-        var counter = 1
-        while (finalFile.exists()) {
-            val name = fileName.substringBeforeLast(".")
-            val ext = fileName.substringAfterLast(".", "")
-            finalFile = File(destDir, "${name}_$counter.$ext")
-            counter++
-        }
-
-        sourceFile.inputStream().use { input ->
-            FileOutputStream(finalFile).use { output ->
-                input.copyTo(output)
+    private fun saveWebDav(imagePath: String, fileName: String, config: StorageConfig): String {
+        val src = File(imagePath)
+        require(src.exists()) { "源文件不存在" }
+        val base = normalizedWebDavUrl(config.webdavUrl).firstOrNull() ?: throw IllegalArgumentException("WebDAV地址无效")
+        val url = base.trimEnd('/') + "/" + java.net.URLEncoder.encode(fileName, "UTF-8").replace("+", "%20")
+        val conn = URL(url).openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "PUT"
+            conn.connectTimeout = 10000
+            conn.readTimeout = 20000
+            conn.doOutput = true
+            if (config.webdavUser.isNotBlank()) {
+                val auth = Base64.encodeToString("${config.webdavUser}:${config.webdavPass}".toByteArray(), Base64.NO_WRAP)
+                conn.setRequestProperty("Authorization", "Basic $auth")
             }
+            conn.setRequestProperty("Content-Type", "application/octet-stream")
+            src.inputStream().use { input -> conn.outputStream.use { input.copyTo(it) } }
+            val code = conn.responseCode
+            if (code !in 200..299) throw IllegalStateException("WebDAV上传失败 HTTP $code")
+            return url
+        } finally { conn.disconnect() }
+    }
+
+    suspend fun testWebDavAuto(url: String, user: String, pass: String): String = withContext(Dispatchers.IO) {
+        if (url.isBlank()) return@withContext "❌ 请输入WebDAV地址"
+        val candidates = normalizedWebDavUrl(url)
+        val errors = mutableListOf<String>()
+        for (u in candidates) {
+            val r = tryTest(u, user, pass)
+            if (r.startsWith("✅")) return@withContext r
+            errors.add(r)
         }
-
-        return Result.success(finalFile.absolutePath)
+        errors.joinToString("\n")
     }
 
-    private fun saveToWebdav(imagePath: String, fileName: String, config: StorageConfig): Result<String> {
-        // WebDAV: HTTP PUT to configured URL
-        val url = "${config.webdavUrl.trimEnd('/')}/$fileName"
-        val file = File(imagePath)
-        if (!file.exists()) return Result.failure(Exception("源文件不存在"))
+    private fun normalizedWebDavUrl(raw: String): List<String> {
+        val s = raw.trim().trimEnd('/')
+        if (s.startsWith("https://") || s.startsWith("http://")) return listOf(s)
+        return listOf("https://$s", "http://$s")
+    }
 
-        val bytes = file.readBytes()
-
-        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-        return try {
-            connection.requestMethod = "PUT"
-            connection.setRequestProperty("Content-Type", "image/jpeg")
-            val auth = android.util.Base64.encodeToString(
-                "${config.webdavUser}:${config.webdavPass}".toByteArray(),
-                android.util.Base64.NO_WRAP
-            )
-            connection.setRequestProperty("Authorization", "Basic $auth")
-            connection.doOutput = true
-            connection.outputStream.use { it.write(bytes) }
-
-            val code = connection.responseCode
-            if (code in 200..299) {
-                Result.success("${config.webdavUrl.trimEnd('/')}/$fileName")
-            } else {
-                Result.failure(Exception("WebDAV 上传失败: HTTP $code"))
-            }
-        } finally {
-            connection.disconnect()
+    private fun tryTest(url: String, user: String, pass: String): String = try {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.requestMethod = "OPTIONS"
+        conn.connectTimeout = 6000
+        conn.readTimeout = 6000
+        if (user.isNotBlank()) {
+            val auth = Base64.encodeToString("$user:$pass".toByteArray(), Base64.NO_WRAP)
+            conn.setRequestProperty("Authorization", "Basic $auth")
         }
-    }
-
-    private fun saveToSmb(imagePath: String, fileName: String, config: StorageConfig): Result<String> {
-        // SMB via jCIFS or similar - simplified HTTP-based approach
-        // For a full implementation, we'd need the jCIFS library
-        // This is a placeholder that falls back to local copy
-        return saveToLocal(imagePath, fileName, 
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                .resolve("NoMediaFavorites").absolutePath)
-    }
+        val code = conn.responseCode
+        conn.disconnect()
+        if (code in 200..299 || code == 207) "✅ 连接成功 HTTP $code\n$url" else "❌ HTTP $code\n$url"
+    } catch (e: Exception) { "❌ ${e.localizedMessage ?: e.javaClass.simpleName}\n$url" }
 }

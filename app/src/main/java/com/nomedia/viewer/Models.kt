@@ -1,0 +1,39 @@
+package com.nomedia.viewer
+
+data class ImageFile(
+    val path: String,
+    val name: String,
+    val parentPath: String,
+    val size: Long,
+    val lastModified: Long
+)
+
+data class FolderAlbum(
+    val path: String,
+    val name: String,
+    val coverPath: String,
+    val count: Int,
+    val latestModified: Long
+)
+
+enum class StorageType { LOCAL, WEBDAV, SMB }
+
+data class StorageConfig(
+    val enabled: Boolean = false,
+    val type: StorageType = StorageType.LOCAL,
+    val localUri: String = "",
+    val localPath: String = "",
+    val webdavUrl: String = "",
+    val webdavUser: String = "",
+    val webdavPass: String = "",
+    val smbUrl: String = "",
+    val smbUser: String = "",
+    val smbPass: String = ""
+)
+
+data class RootFolder(
+    val uri: String,
+    val path: String,
+    val name: String,
+    val enabled: Boolean = true
+)

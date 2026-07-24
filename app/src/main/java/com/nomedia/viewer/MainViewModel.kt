@@ -9,170 +9,125 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class BrowseState(
+data class AppState(
+    val currentTab: Int = 1,
+    val roots: List<RootFolder> = emptyList(),
+    val albums: List<FolderAlbum> = emptyList(),
+    val selectedAlbumPaths: Set<String> = emptySet(),
+    val browsingTitle: String = "",
     val images: List<ImageFile> = emptyList(),
-    val unviewedImages: List<ImageFile> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null,
+    val unviewed: List<ImageFile> = emptyList(),
     val favorites: Set<String> = emptySet(),
-    val viewedImages: Set<String> = emptySet(),
-    val currentTab: Int = 0,
-    val columnCount: Int = 1,
-    val showBottomBar: Boolean = true,
-    val folders: List<FolderManager.ManagedFolder> = emptyList(),
-    val folderGroups: List<FolderGroup> = emptyList(),
-    val selectedFolderPaths: Set<String> = emptySet(),
+    val columns: Int = 1,
+    val bottomBarVisible: Boolean = true,
+    val loading: Boolean = false,
+    val message: String? = null,
     val storageConfig: StorageConfig = StorageConfig(),
     val fullscreenImage: ImageFile? = null
 )
 
 class MainViewModel(
-    private val repository: ImageRepository,
-    private val folderManager: FolderManager,
-    private val storageManager: StorageManager
+    private val repo: AppRepository,
+    private val storage: StorageManager
 ) : ViewModel() {
+    private val _state = MutableStateFlow(AppState())
+    val state: StateFlow<AppState> = _state.asStateFlow()
 
-    private val _state = MutableStateFlow(BrowseState())
-    val state: StateFlow<BrowseState> = _state.asStateFlow()
+    init { reloadBasics(); scanAlbums() }
 
-    init {
+    fun reloadBasics() {
         _state.value = _state.value.copy(
-            isLoading = false, columnCount = folderManager.getColumnCount(),
-            storageConfig = storageManager.getConfig(), folders = folderManager.getFolders()
+            roots = repo.roots(),
+            favorites = repo.favorites(),
+            columns = repo.columns(),
+            storageConfig = repo.storageConfig()
         )
     }
 
-    // ===== Folder Group Scanning =====
+    fun setTab(tab: Int) {
+        _state.value = _state.value.copy(currentTab = tab, bottomBarVisible = true)
+        if (tab == 1) scanAlbums()
+    }
 
-    fun scanFolderGroups() {
-        viewModelScope.launch {
-            val enabledPaths = folderManager.getEnabledPaths()
-            if (enabledPaths.isEmpty()) return@launch
-            _state.value = _state.value.copy(isLoading = true, error = null)
-            try {
-                val groups = repository.scanAndGroup(enabledPaths)
-                _state.value = _state.value.copy(folderGroups = groups, isLoading = false)
-                if (groups.isEmpty()) _state.value = _state.value.copy(error = "所选文件夹中未找到图片")
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = "扫描出错: ${e.message}")
-            }
+    fun addRoot(uri: Uri) {
+        val root = repo.addRoot(uri)
+        reloadBasics()
+        _state.value = _state.value.copy(message = if (root == null) "无法解析该目录路径" else "已添加：${root.name}")
+        scanAlbums()
+    }
+    fun removeRoot(uri: String) { repo.removeRoot(uri); reloadBasics(); scanAlbums() }
+    fun setRootEnabled(uri: String, enabled: Boolean) { repo.setRootEnabled(uri, enabled); reloadBasics(); scanAlbums() }
+
+    fun scanAlbums() = viewModelScope.launch {
+        _state.value = _state.value.copy(loading = true, message = null)
+        val roots = repo.roots()
+        if (roots.none { it.enabled }) {
+            _state.value = _state.value.copy(loading = false, roots = roots, albums = emptyList(), message = if (roots.isEmpty()) "请先在设置中添加手机文件夹" else "请启用至少一个根目录")
+            return@launch
         }
+        val albums = repo.scanAlbums()
+        _state.value = _state.value.copy(loading = false, roots = roots, albums = albums, message = if (albums.isEmpty()) "没有扫描到含图片的子目录" else null)
     }
 
-    // ===== Browse from folder(s) =====
+    fun toggleAlbum(path: String) {
+        val s = _state.value.selectedAlbumPaths.toMutableSet()
+        if (path in s) s.remove(path) else s.add(path)
+        _state.value = _state.value.copy(selectedAlbumPaths = s)
+    }
+    fun clearAlbumSelection() { _state.value = _state.value.copy(selectedAlbumPaths = emptySet()) }
 
-    private var browsingPaths: List<String> = emptyList()
-
-    fun browseFolder(folderPath: String) {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
-            try {
-                val allImages = repository.scanSingleFolder(folderPath)
-                val viewed = repository.getViewedImages()
-                val favorites = repository.getFavorites()
-                browsingPaths = listOf(folderPath)
-                _state.value = _state.value.copy(
-                    images = allImages,
-                    unviewedImages = allImages.filter { it.uri !in viewed },
-                    isLoading = false, favorites = favorites, currentTab = 0
-                )
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = e.message)
-            }
-        }
+    fun browseAlbum(path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" })
+    fun browseSelectedAlbums() {
+        val paths = _state.value.selectedAlbumPaths.toList()
+        if (paths.isNotEmpty()) browsePaths(paths, "合并浏览 ${paths.size} 个文件夹")
+        clearAlbumSelection()
     }
 
-    fun browseMergedFolders(paths: List<String>) {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
-            try {
-                val allImages = repository.scanPaths(paths)
-                val viewed = repository.getViewedImages()
-                val favorites = repository.getFavorites()
-                browsingPaths = paths
-                _state.value = _state.value.copy(
-                    images = allImages,
-                    unviewedImages = allImages.filter { it.uri !in viewed },
-                    isLoading = false, favorites = favorites, currentTab = 0
-                )
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = e.message)
-            }
-        }
-    }
-
-    fun toggleFolderSelection(folderPath: String) {
-        val current = _state.value.selectedFolderPaths.toMutableSet()
-        if (folderPath in current) current.remove(folderPath) else current.add(folderPath)
-        _state.value = _state.value.copy(selectedFolderPaths = current)
-    }
-
-    fun clearFolderSelection() {
-        _state.value = _state.value.copy(selectedFolderPaths = emptySet())
-    }
-
-    // ===== View-once =====
-
-    fun markAsViewed(uri: String) {
-        repository.markAsViewed(uri)
-        val viewed = repository.getViewedImages()
+    fun browsePaths(paths: List<String>, title: String) = viewModelScope.launch {
+        _state.value = _state.value.copy(loading = true, message = null)
+        val imgs = repo.scanImages(paths)
+        val viewed = repo.viewed()
         _state.value = _state.value.copy(
-            unviewedImages = _state.value.images.filter { it.uri !in viewed }, viewedImages = viewed
+            currentTab = 0,
+            browsingTitle = title,
+            images = imgs,
+            unviewed = imgs.filter { it.path !in viewed },
+            favorites = repo.favorites(),
+            loading = false,
+            bottomBarVisible = true,
+            message = if (imgs.isEmpty()) "该文件夹没有图片" else null
         )
     }
 
-    fun resetHistory() {
-        repository.resetHistory()
-        _state.value = _state.value.copy(unviewedImages = _state.value.images, error = null)
+    fun markViewed(path: String) {
+        repo.markViewed(path)
+        val viewed = repo.viewed()
+        _state.value = _state.value.copy(unviewed = _state.value.images.filter { it.path !in viewed })
     }
+    fun resetViewed() { repo.resetViewed(); _state.value = _state.value.copy(unviewed = _state.value.images) }
 
-    // ===== Favorites =====
-
-    fun toggleFavorite(uri: String) {
-        val added = repository.toggleFavorite(uri)
-        _state.value = _state.value.copy(favorites = repository.getFavorites())
+    fun toggleFavorite(path: String) {
+        val added = repo.toggleFavorite(path)
+        _state.value = _state.value.copy(favorites = repo.favorites())
         if (added) {
-            val image = _state.value.images.find { it.uri == uri } ?: repository.getFavoriteImages().find { it.uri == uri }
-            if (image != null) viewModelScope.launch { storageManager.saveFavoriteImage(image.uri, image.name) }
+            val img = _state.value.images.find { it.path == path } ?: repo.favoriteImages().find { it.path == path }
+            if (img != null) viewModelScope.launch { storage.saveFavoriteImage(img.path, img.name, repo.storageConfig()) }
         }
     }
-    fun isFavorite(uri: String): Boolean = repository.isFavorite(uri)
-    fun getFavoriteImages(): List<ImageFile> = repository.getFavoriteImages()
+    fun favoriteImages(): List<ImageFile> = repo.favoriteImages()
+    fun isFavorite(path: String): Boolean = path in repo.favorites()
 
-    // ===== Folder Management =====
+    fun setColumns(c: Int) { repo.setColumns(c); _state.value = _state.value.copy(columns = repo.columns()) }
+    fun setBottomVisible(v: Boolean) { _state.value = _state.value.copy(bottomBarVisible = v) }
+    fun saveStorage(c: StorageConfig) { repo.saveStorage(c); _state.value = _state.value.copy(storageConfig = c) }
+    fun testWebDav(url: String, user: String, pass: String, cb: (String) -> Unit) = viewModelScope.launch { cb(storage.testWebDavAuto(url, user, pass)) }
+    fun pathFromUri(uri: Uri): String? = repo.uriToPath(uri.toString())
 
-    fun addFolder(uri: Uri) { folderManager.addFolder(uri); refreshFolders(); scanFolderGroups() }
-    fun removeFolder(uriStr: String) { folderManager.removeFolder(uriStr); refreshFolders(); scanFolderGroups() }
-    fun toggleFolder(uriStr: String, enabled: Boolean) { folderManager.setEnabled(uriStr, enabled); refreshFolders(); scanFolderGroups() }
-    fun refreshFolders() { _state.value = _state.value.copy(folders = folderManager.getFolders()) }
-
-    // ===== Tab & UI =====
-
-    fun setTab(index: Int) {
-        _state.value = _state.value.copy(currentTab = index)
-        when (index) {
-            1 -> { refreshFolders(); scanFolderGroups() }
-        }
-    }
-    fun setShowBottomBar(show: Boolean) { _state.value = _state.value.copy(showBottomBar = show) }
-    fun setColumnCount(n: Int) { folderManager.setColumnCount(n); _state.value = _state.value.copy(columnCount = n) }
-
-    // ===== Storage =====
-
-    fun getStorageConfig(): StorageConfig = storageManager.getConfig()
-    fun saveStorageConfig(config: StorageConfig) { storageManager.saveConfig(config); _state.value = _state.value.copy(storageConfig = config) }
-
-    // ===== Fullscreen =====
-
-    fun openFullscreen(image: ImageFile) { _state.value = _state.value.copy(fullscreenImage = image) }
+    fun openFullscreen(img: ImageFile) { _state.value = _state.value.copy(fullscreenImage = img) }
     fun closeFullscreen() { _state.value = _state.value.copy(fullscreenImage = null) }
 
-    // ===== Factory =====
-
-    class Factory(
-        private val repository: ImageRepository, private val folderManager: FolderManager, private val storageManager: StorageManager
-    ) : ViewModelProvider.Factory {
+    class Factory(private val repo: AppRepository, private val storage: StorageManager) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(repository, folderManager, storageManager) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(repo, storage) as T
     }
 }
