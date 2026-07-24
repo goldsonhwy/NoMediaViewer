@@ -48,7 +48,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
 
     fun setTab(tab: Int) {
         _state.value = _state.value.copy(currentTab = tab, bottomBarVisible = true)
-        if (tab == 1) scanAlbums(force = false)
+        if (tab == 1 || tab == 2) scanAlbums(force = false)
     }
 
     fun addRoot(uri: Uri) { val r = repo.addRoot(uri); reloadBasics(); rootsSignature = ""; _state.value = _state.value.copy(message = if (r == null) "无法解析该目录路径" else "已添加：${r.name}"); scanAlbums(true) }
@@ -93,13 +93,17 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun markRead(path: String) { repo.markViewed(path); _state.value = _state.value.copy(viewed = repo.viewed()) }
     fun resetViewed() { repo.resetViewed(); _state.value = _state.value.copy(viewed = emptySet(), message = "已重置阅读标记") }
 
-    fun goNextAlbumIfPossible() {
+    fun goNextAlbumIfPossible() = goRelativeAlbum(1)
+    fun goPreviousAlbumIfPossible() = goRelativeAlbum(-1)
+
+    private fun goRelativeAlbum(delta: Int) {
         val current = _state.value.currentAlbumPath ?: return
         val albums = _state.value.albums
         val idx = albums.indexOfFirst { it.path == current }
-        if (idx >= 0 && idx < albums.lastIndex) {
-            val next = albums[idx + 1]
-            showNotice("已进入下一个文件夹：${next.name}")
+        val target = idx + delta
+        if (idx >= 0 && target in albums.indices) {
+            val next = albums[target]
+            showNotice(if (delta > 0) "已进入下一个文件夹：${next.name}" else "已进入上一个文件夹：${next.name}")
             browseAlbum(next.path)
         }
     }

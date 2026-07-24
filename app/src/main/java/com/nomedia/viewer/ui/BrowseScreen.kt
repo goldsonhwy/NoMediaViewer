@@ -39,6 +39,7 @@ fun BrowseScreen(
     onOpenFull: (ImageFile) -> Unit,
     onViewed: (String) -> Unit,
     onSwipeLeft: () -> Unit,
+    onSwipeRight: () -> Unit,
     onBack: () -> Unit,
     onScrollUp: () -> Unit,
     onScrollDown: () -> Unit
@@ -55,7 +56,13 @@ fun BrowseScreen(
                 detectDragGestures(
                     onDragStart = { dragX = 0f },
                     onDrag = { change, dragAmount -> dragX += dragAmount.x; change.consume() },
-                    onDragEnd = { if (dragX < -120f) onSwipeLeft(); dragX = 0f },
+                    onDragEnd = {
+                        when {
+                            dragX < -120f -> onSwipeLeft()
+                            dragX > 120f -> onSwipeRight()
+                        }
+                        dragX = 0f
+                    },
                     onDragCancel = { dragX = 0f }
                 )
             }

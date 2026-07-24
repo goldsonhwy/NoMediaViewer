@@ -77,7 +77,8 @@ class MainActivity : ComponentActivity() {
 
                 val tabs = listOf(
                     TabItem("浏览", Icons.Default.PhotoLibrary, Icons.Outlined.Image),
-                    TabItem("文件夹", Icons.Default.Folder, Icons.Outlined.Folder),
+                    TabItem("未浏览", Icons.Default.Folder, Icons.Outlined.Folder),
+                    TabItem("已浏览", Icons.Default.Folder, Icons.Outlined.Folder),
                     TabItem("收藏", Icons.Default.Favorite, Icons.Outlined.FavoriteBorder),
                     TabItem("设置", Icons.Default.Settings, Icons.Outlined.Settings)
                 )
@@ -116,20 +117,35 @@ class MainActivity : ComponentActivity() {
                                 onOpenFull = { vm.openFullscreen(it) },
                                 onViewed = { vm.markRead(it) },
                                 onSwipeLeft = { vm.goNextAlbumIfPossible() },
+                                onSwipeRight = { vm.goPreviousAlbumIfPossible() },
                                 onBack = { vm.setTab(1) },
                                 onScrollUp = { vm.setBottomVisible(false) },
                                 onScrollDown = { vm.setBottomVisible(true) }
                             )
-                            1 -> FolderBrowserScreen(
-                                albums = state.albums,
-                                viewed = state.viewed,
-                                loading = state.loading,
-                                message = state.message,
-                                onAlbumClick = { vm.browseAlbum(it) },
-                                onAlbumLongClick = { vm.markAlbumRead(it) }
-                            )
-                            2 -> FavoritesScreen(vm.favoriteImages(), onImageClick = { vm.openFullscreen(it) })
-                            3 -> SettingsScreen(
+                            1 -> {
+                                val unreadAlbums = state.albums.filter { album -> album.imagePaths.any { it !in state.viewed } }
+                                FolderBrowserScreen(
+                                    albums = unreadAlbums,
+                                    viewed = state.viewed,
+                                    loading = state.loading,
+                                    message = state.message ?: "没有未浏览文件夹",
+                                    onAlbumClick = { vm.browseAlbum(it) },
+                                    onAlbumLongClick = { vm.markAlbumRead(it) }
+                                )
+                            }
+                            2 -> {
+                                val readAlbums = state.albums.filter { album -> album.imagePaths.isNotEmpty() && album.imagePaths.all { it in state.viewed } }
+                                FolderBrowserScreen(
+                                    albums = readAlbums,
+                                    viewed = state.viewed,
+                                    loading = state.loading,
+                                    message = state.message ?: "还没有已浏览完成的文件夹",
+                                    onAlbumClick = { vm.browseAlbum(it) },
+                                    onAlbumLongClick = { vm.markAlbumRead(it) }
+                                )
+                            }
+                            3 -> FavoritesScreen(vm.favoriteImages(), onImageClick = { vm.openFullscreen(it) })
+                            4 -> SettingsScreen(
                                 roots = state.roots,
                                 storageConfig = state.storageConfig,
                                 columns = state.columns,

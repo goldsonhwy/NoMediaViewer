@@ -29,6 +29,6 @@ fun GreenCorner(
             path.lineTo(0f, h)
         }
         path.close()
-        drawPath(path, Color(0xFF00D060))
+        drawPath(path, Color(0xFFFFB000))
     }
 }
