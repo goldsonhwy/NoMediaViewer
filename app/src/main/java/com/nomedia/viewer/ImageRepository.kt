@@ -2,14 +2,16 @@ package com.nomedia.viewer
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.os.Environment
-import android.provider.MediaStore
-import java.io.File
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 
 data class ImageFile(
     val path: String,
+    val uri: String = "",
     val name: String,
     val size: Long,
     val lastModified: Long
@@ -20,166 +22,105 @@ class ImageRepository(private val context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("nomedia_viewer", Context.MODE_PRIVATE)
 
-    // ===================== Image Scanning =====================
+    // ===== Scan only checked folders =====
 
-    suspend fun scanNoMediaImages(): List<ImageFile> = withContext(Dispatchers.IO) {
+    suspend fun scanCheckedFolders(folderManager: FolderTreeManager): List<ImageFile> = withContext(Dispatchers.IO) {
         val images = mutableListOf<ImageFile>()
         val extensions = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif")
 
-        // Get all external storage directories
-        val storageDirs = mutableListOf<File>()
+        for (rootUriStr in folderManager.getRootUris()) {
+            try {
+                val rootUri = Uri.parse(rootUriStr)
+                val rootDoc = DocumentFile.fromTreeUri(context, rootUri) ?: continue
+                val checkedPaths = folderManager.getCheckedFolders(rootUriStr)
 
-        // Primary external storage
-        Environment.getExternalStorageDirectory()?.let { storageDirs.add(it) }
-
-        // Additional storage paths
-        val additionalPaths = listOf(
-            "/storage/emulated/0",
-            "/sdcard",
-            "/mnt/sdcard",
-            "/storage",
-        )
-        for (path in additionalPaths) {
-            val dir = File(path)
-            if (dir.exists() && dir !in storageDirs) {
-                storageDirs.add(dir)
-            }
-        }
-
-        // Also scan from context's external media dirs
-        context.getExternalFilesDirs(null).forEach { file ->
-            if (file != null && file.exists()) {
-                val parent = file.parentFile?.parentFile
-                if (parent != null && parent !in storageDirs) {
-                    storageDirs.add(parent)
+                for (checkedPath in checkedPaths) {
+                    val targetDoc = if (checkedPath.isEmpty()) {
+                        rootDoc
+                    } else {
+                        navigateToPath(rootDoc, checkedPath)
+                    }
+                    if (targetDoc != null) {
+                        scanDocumentFiles(targetDoc, extensions, images)
+                    }
                 }
-            }
+            } catch (_: Exception) {}
         }
 
-        // For each storage dir, find .nomedia directories and scan images
-        for (baseDir in storageDirs) {
-            if (!baseDir.exists() || !baseDir.canRead()) continue
-            findNoMediaDirs(baseDir).forEach { nomediaDir ->
-                scanImagesInDir(nomediaDir, extensions).let { images.addAll(it) }
-            }
-        }
-
-        // Sort by modification time (newest first)
         images.sortedByDescending { it.lastModified }
     }
 
-    private fun findNoMediaDirs(dir: File): List<File> {
-        val result = mutableListOf<File>()
-        try {
-            val files = dir.listFiles() ?: return result
-            for (file in files) {
-                if (file.isDirectory && file.canRead()) {
-                    // Check if this directory has .nomedia
-                    if (File(file, ".nomedia").exists()) {
-                        result.add(file)
-                    }
-                    // Recurse into subdirectories (limit depth)
-                    if (file.absolutePath.count { it == '/' } - dir.absolutePath.count { it == '/' } < 4) {
-                        result.addAll(findNoMediaDirs(file))
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            // Skip inaccessible directories
+    private fun navigateToPath(root: DocumentFile, path: String): DocumentFile? {
+        var current = root
+        val parts = path.split("/")
+        for (part in parts) {
+            if (part.isEmpty()) continue
+            val children = current.listFiles() ?: return null
+            current = children.find { it.isDirectory && it.name == part } ?: return null
         }
-        return result
+        return current
     }
 
-    private fun scanImagesInDir(dir: File, extensions: Set<String>): List<ImageFile> {
-        val images = mutableListOf<ImageFile>()
+    private fun scanDocumentFiles(dir: DocumentFile, extensions: Set<String>, result: MutableList<ImageFile>, depth: Int = 0) {
+        if (depth > 10) return
         try {
-            val files = dir.listFiles() ?: return images
+            val files = dir.listFiles() ?: return
             for (file in files) {
-                if (file.isFile && file.canRead()) {
-                    val ext = file.extension.lowercase()
+                if (file.isDirectory) {
+                    scanDocumentFiles(file, extensions, result, depth + 1)
+                } else if (file.isFile) {
+                    val name = file.name ?: continue
+                    val ext = name.substringAfterLast(".", "").lowercase()
                     if (ext in extensions) {
-                        images.add(
-                            ImageFile(
-                                path = file.absolutePath,
-                                name = file.name,
-                                size = file.length(),
-                                lastModified = file.lastModified()
-                            )
-                        )
+                        result.add(ImageFile(
+                            path = file.uri.toString(),
+                            uri = file.uri.toString(),
+                            name = name,
+                            size = file.length(),
+                            lastModified = file.lastModified()
+                        ))
                     }
                 }
             }
-        } catch (e: Exception) {
-            // Skip inaccessible
-        }
-        return images
+        } catch (_: Exception) {}
     }
 
-    // ===================== Favorites =====================
+    // ===== Favorites =====
 
     fun getFavorites(): Set<String> {
         return prefs.getStringSet("favorites", emptySet()) ?: emptySet()
     }
 
-    fun toggleFavorite(path: String): Boolean {
+    fun toggleFavorite(uri: String): Boolean {
         val favs = getFavorites().toMutableSet()
-        val added = if (path in favs) {
-            favs.remove(path)
-            false
-        } else {
-            favs.add(path)
-            true
-        }
+        val added = if (uri in favs) { favs.remove(uri); false } else { favs.add(uri); true }
         prefs.edit().putStringSet("favorites", favs).apply()
         return added
     }
 
-    fun isFavorite(path: String): Boolean {
-        return path in getFavorites()
-    }
+    fun isFavorite(uri: String): Boolean = uri in getFavorites()
 
     fun getFavoriteImages(): List<ImageFile> {
-        val favPaths = getFavorites()
-        return favPaths.mapNotNull { path ->
-            val file = File(path)
-            if (file.exists()) {
-                ImageFile(
-                    path = file.absolutePath,
-                    name = file.name,
-                    size = file.length(),
-                    lastModified = file.lastModified()
-                )
-            } else {
-                // Remove stale favorites
-                removeFavorite(path)
-                null
-            }
+        return getFavorites().mapNotNull { uriStr ->
+            try {
+                val uri = Uri.parse(uriStr)
+                val docFile = DocumentFile.fromSingleUri(context, uri)
+                    ?: DocumentFile.fromFile(File(uriStr))
+                if (docFile != null && docFile.exists()) {
+                    ImageFile(path = uriStr, uri = uriStr, name = docFile.name ?: "Unknown", size = docFile.length(), lastModified = docFile.lastModified())
+                } else null
+            } catch (_: Exception) { null }
         }
     }
 
-    private fun removeFavorite(path: String) {
-        val favs = getFavorites().toMutableSet()
-        favs.remove(path)
-        prefs.edit().putStringSet("favorites", favs).apply()
-    }
+    // ===== Viewing History =====
 
-    // ===================== Viewing History =====================
-
-    fun getViewedImages(): Set<String> {
-        return prefs.getStringSet("viewed", emptySet()) ?: emptySet()
-    }
-
-    fun markAsViewed(path: String) {
+    fun getViewedImages(): Set<String> = prefs.getStringSet("viewed", emptySet()) ?: emptySet()
+    fun markAsViewed(uri: String) {
         val viewed = getViewedImages().toMutableSet()
-        viewed.add(path)
+        viewed.add(uri)
         prefs.edit().putStringSet("viewed", viewed).apply()
     }
-
-    fun isViewed(path: String): Boolean {
-        return path in getViewedImages()
-    }
-
-    fun resetHistory() {
-        prefs.edit().remove("viewed").apply()
-    }
+    fun isViewed(uri: String): Boolean = uri in getViewedImages()
+    fun resetHistory() { prefs.edit().remove("viewed").apply() }
 }

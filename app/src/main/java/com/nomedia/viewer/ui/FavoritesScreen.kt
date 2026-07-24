@@ -3,16 +3,18 @@ package com.nomedia.viewer.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -28,7 +30,8 @@ import com.nomedia.viewer.ImageFile
 fun FavoritesScreen(
     favorites: List<ImageFile>,
     isFavorite: (String) -> Boolean,
-    onToggleFavorite: (String) -> Unit
+    onToggleFavorite: (String) -> Unit,
+    onImageClick: (ImageFile) -> Unit
 ) {
     if (favorites.isEmpty()) {
         Box(
@@ -62,55 +65,48 @@ fun FavoritesScreen(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        contentPadding = PaddingValues(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         items(
             items = favorites,
-            key = { it.path }
+            key = { it.uri }
         ) { image ->
-            Box(
+            Card(
                 modifier = Modifier
-                    .aspectRatio(1f)
-                    .background(Color(0xFF222222))
-                    .clickable { onToggleFavorite(image.path) }
+                    .fillMaxWidth()
+                    .clickable { onImageClick(image) },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)),
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data("file://${image.path}")
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = image.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                // Heart icon overlay
-                if (isFavorite(image.path)) {
-                    Icon(
-                        Icons.Default.Favorite,
-                        contentDescription = "Favorited",
+                Box {
+                    // Full-size image (no crop - uses Fit for waterfall effect)
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(image.uri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = image.name,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(16.dp),
-                        tint = Color(0xFFFF6B6B)
+                            .fillMaxWidth()
+                            .background(Color(0xFF111111)),
+                        contentScale = ContentScale.Fit
                     )
-                } else {
-                    // Faded overlay when unfavorited
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color(0x88000000)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "已取消",
-                            color = Color.White,
-                            fontSize = 12.sp
+
+                    // Favorite heart
+                    if (isFavorite(image.uri)) {
+                        Icon(
+                            Icons.Default.Favorite,
+                            contentDescription = "Favorited",
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(6.dp)
+                                .size(18.dp),
+                            tint = Color(0xFFFF6B6B)
                         )
                     }
                 }
