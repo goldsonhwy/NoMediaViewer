@@ -98,10 +98,10 @@ class AppRepository(private val context: Context) {
         if (f.exists()) toImageFile(f) else null
     }.sortedByDescending { it.lastModified }
 
-    fun columns(): Int = prefs.getInt("columns", 1).coerceIn(1, 5)
-    fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 5)).apply()
-    fun favoriteColumns(): Int = prefs.getInt("favorite_columns", 2).coerceIn(1, 5)
-    fun setFavoriteColumns(v: Int) = prefs.edit().putInt("favorite_columns", v.coerceIn(1, 5)).apply()
+    fun columns(): Int = prefs.getInt("columns", 1).coerceIn(1, 6)
+    fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 6)).apply()
+    fun favoriteColumns(): Int = prefs.getInt("favorite_columns", 2).coerceIn(1, 6)
+    fun setFavoriteColumns(v: Int) = prefs.edit().putInt("favorite_columns", v.coerceIn(1, 6)).apply()
 
     private fun toImageFile(f: File): ImageFile {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }

@@ -68,12 +68,22 @@ class MainActivity : ComponentActivity() {
                     showSplash = false
                 }
 
-                BackHandler(enabled = state.currentTab == 0) {
+                BackHandler(enabled = state.fullscreenImage != null) {
+                    vm.closeFullscreen()
+                }
+                BackHandler(enabled = state.fullscreenImage == null && state.currentTab == 0) {
                     vm.setTab(1)
                 }
 
                 state.fullscreenImage?.let { img ->
-                    FullscreenViewer(img, vm.isFavorite(img.path), onToggleFavorite = { vm.toggleFavorite(img.path) }, onDismiss = { vm.closeFullscreen() })
+                    FullscreenViewer(
+                        img,
+                        vm.isFavorite(img.path),
+                        onToggleFavorite = { vm.toggleFavorite(img.path) },
+                        onNext = { vm.showNextFullscreen() },
+                        onPrevious = { vm.showPreviousFullscreen() },
+                        onDismiss = { vm.closeFullscreen() }
+                    )
                     return@MaterialTheme
                 }
 

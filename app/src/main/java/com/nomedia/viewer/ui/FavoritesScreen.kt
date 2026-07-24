@@ -45,7 +45,7 @@ fun FavoritesScreen(
     }
     var lastZoomChange by remember { mutableLongStateOf(0L) }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(columns.coerceIn(1, 5)),
+        columns = GridCells.Fixed(columns.coerceIn(1, 6)),
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(columns) {
@@ -53,7 +53,7 @@ fun FavoritesScreen(
                     val now = System.currentTimeMillis()
                     if (now - lastZoomChange > 260) {
                         when {
-                            zoom < 0.92f -> { onColumnsChange((columns + 1).coerceAtMost(5)); lastZoomChange = now }
+                            zoom < 0.92f -> { onColumnsChange((columns + 1).coerceAtMost(6)); lastZoomChange = now }
                             zoom > 1.08f -> { onColumnsChange((columns - 1).coerceAtLeast(1)); lastZoomChange = now }
                         }
                     }
@@ -66,7 +66,7 @@ fun FavoritesScreen(
         items(
             favorites,
             key = { it.path },
-            span = { img -> if (img.width > img.height && columns > 1) GridItemSpan(columns) else GridItemSpan(1) }
+            span = { img -> if (img.width > img.height && columns > 1) GridItemSpan(landscapeSpan(columns)) else GridItemSpan(1) }
         ) { img ->
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current).data("file://${img.path}").crossfade(false).allowHardware(true).precision(Precision.INEXACT).build(),
@@ -77,3 +77,9 @@ fun FavoritesScreen(
         }
     }
 }
+
+private fun landscapeSpan(columns: Int): Int = when {
+    columns <= 1 -> 1
+    columns <= 5 -> 2
+    else -> 3
+}.coerceAtMost(columns)

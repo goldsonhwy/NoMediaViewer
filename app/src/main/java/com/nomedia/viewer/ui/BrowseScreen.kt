@@ -61,7 +61,7 @@ fun BrowseScreen(
                     val now = System.currentTimeMillis()
                     if (now - lastZoomChange > 260) {
                         when {
-                            zoom < 0.92f -> { onColumnsChange((columns + 1).coerceAtMost(5)); lastZoomChange = now }
+                            zoom < 0.92f -> { onColumnsChange((columns + 1).coerceAtMost(6)); lastZoomChange = now }
                             zoom > 1.08f -> { onColumnsChange((columns - 1).coerceAtLeast(1)); lastZoomChange = now }
                         }
                     }
@@ -121,12 +121,18 @@ private fun MultiColumn(images: List<ImageFile>, columns: Int, isFavorite: (Stri
         itemsIndexed(
             images,
             key = { _, it -> it.path },
-            span = { _, img -> if (img.width > img.height && columns > 1) GridItemSpan(columns) else GridItemSpan(1) }
+            span = { _, img -> if (img.width > img.height && columns > 1) GridItemSpan(landscapeSpan(columns)) else GridItemSpan(1) }
         ) { _, img ->
             ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull)
         }
     }
 }
+
+private fun landscapeSpan(columns: Int): Int = when {
+    columns <= 1 -> 1
+    columns <= 5 -> 2
+    else -> 3
+}.coerceAtMost(columns)
 
 @Composable
 private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {

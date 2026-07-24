@@ -151,6 +151,15 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun testWebDav(url: String, user: String, pass: String, cb: (String) -> Unit) = viewModelScope.launch { cb(storage.testWebDavAuto(url, user, pass)) }
     fun pathFromUri(uri: Uri): String? = repo.uriToPath(uri.toString())
     fun openFullscreen(img: ImageFile) { _state.value = _state.value.copy(fullscreenImage = img) }
+    fun showNextFullscreen() = shiftFullscreen(1)
+    fun showPreviousFullscreen() = shiftFullscreen(-1)
+    private fun shiftFullscreen(delta: Int) {
+        val current = _state.value.fullscreenImage ?: return
+        val source = if (_state.value.images.any { it.path == current.path }) _state.value.images else favoriteImages()
+        val idx = source.indexOfFirst { it.path == current.path }
+        val target = idx + delta
+        if (idx >= 0 && target in source.indices) _state.value = _state.value.copy(fullscreenImage = source[target])
+    }
     fun closeFullscreen() { _state.value = _state.value.copy(fullscreenImage = null) }
 
     class Factory(private val repo: AppRepository, private val storage: StorageManager) : ViewModelProvider.Factory {

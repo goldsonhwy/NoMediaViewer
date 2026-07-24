@@ -71,7 +71,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
         Section("浏览布局") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (1..5).forEach { n ->
+                (1..6).forEach { n ->
                     FilterChip(
                         selected = columns == n,
                         onClick = { onColumns(n) },
