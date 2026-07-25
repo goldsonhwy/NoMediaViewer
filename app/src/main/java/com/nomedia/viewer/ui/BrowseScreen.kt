@@ -1,6 +1,8 @@
 package com.nomedia.viewer.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -33,6 +35,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
 import com.nomedia.viewer.ImageFile
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -237,15 +240,18 @@ private fun landscapeSpan(columns: Int): Int = when {
 @Composable
 private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {
     val ctx = LocalContext.current
-    Box(Modifier.fillMaxWidth().background(Color(0xFF111111)).pointerInput(img.path) { detectTapGestures(onTap = { onFavorite(img.path) }, onDoubleTap = { onOpenFull(img) }) }) {
+    var flash by remember(img.path) { mutableStateOf(false) }
+    val flashAlpha by animateFloatAsState(if (flash) 0.28f else 0f, animationSpec = tween(180), label = "favorite-flash")
+    LaunchedEffect(flash) { if (flash) { delay(160); flash = false } }
+    Box(Modifier.fillMaxWidth().background(Color(0xFF111111)).pointerInput(img.path) { detectTapGestures(onTap = { val was = isFavorite(img.path); onFavorite(img.path); if (!was) flash = true }, onDoubleTap = { onOpenFull(img) }) }) {
         AsyncImage(
             model = ImageRequest.Builder(ctx).data("file://${img.path}").crossfade(false).allowHardware(true).precision(Precision.INEXACT).build(),
             contentDescription = null,
             modifier = Modifier.fillMaxWidth(),
             contentScale = ContentScale.FillWidth
         )
-        if (isRead(img.path)) GreenCorner(modifier = Modifier.align(Alignment.TopStart), topRight = false, size = 14.dp)
-        if (isFavorite(img.path)) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFFB000))
+        if (flashAlpha > 0f) Box(Modifier.matchParentSize().background(Color.White.copy(alpha = flashAlpha)))
+        if (isFavorite(img.path)) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFF2B2B))
     }
 }
 

@@ -104,7 +104,7 @@ fun FullscreenViewer(
             Icon(
                 if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = null,
-                tint = if (isFavorite) Color(0xFFFFB000) else Color.White,
+                tint = if (isFavorite) Color(0xFFFF2B2B) else Color.White,
                 modifier = Modifier.size(34.dp)
             )
         }
