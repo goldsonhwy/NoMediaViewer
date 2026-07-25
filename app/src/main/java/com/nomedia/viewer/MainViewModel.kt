@@ -30,7 +30,8 @@ data class AppState(
     val message: String? = null,
     val transientNotice: String? = null,
     val storageConfig: StorageConfig = StorageConfig(),
-    val fullscreenImage: ImageFile? = null
+    val fullscreenImage: ImageFile? = null,
+    val fullscreenSource: List<ImageFile> = emptyList()
 )
 
 class MainViewModel(private val repo: AppRepository, private val storage: StorageManager, private val network: NetworkFolderManager) : ViewModel() {
@@ -193,6 +194,14 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         }
     }
     fun favoriteImages(): List<ImageFile> = repo.favoriteImages()
+    fun unFavoriteMany(paths: Set<String>) { paths.forEach { toggleFavorite(it) } }
+    fun deleteFavoriteImages(paths: Set<String>) {
+        paths.forEach { p ->
+            if (p in repo.favorites()) toggleFavorite(p)
+            runCatching { java.io.File(p).delete() }
+        }
+        _state.value = _state.value.copy(favorites = repo.favorites(), transientNotice = "已删除收藏图片：${paths.size}张")
+    }
     fun isFavorite(path: String): Boolean = path in repo.favorites()
     fun setColumns(c: Int) { repo.setColumns(c); _state.value = _state.value.copy(columns = repo.columns()) }
     fun setFavoriteColumns(c: Int) { repo.setFavoriteColumns(c); _state.value = _state.value.copy(favoriteColumns = repo.favoriteColumns()) }
@@ -201,12 +210,13 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun saveStorage(c: StorageConfig) { repo.saveStorage(c); _state.value = _state.value.copy(storageConfig = c, message = "已保存设置") }
     fun testWebDav(url: String, user: String, pass: String, cb: (String) -> Unit) = viewModelScope.launch { cb(storage.testWebDavAuto(url, user, pass)) }
     fun pathFromUri(uri: Uri): String? = repo.uriToPath(uri.toString())
-    fun openFullscreen(img: ImageFile) { _state.value = _state.value.copy(fullscreenImage = img) }
+    fun openFullscreen(img: ImageFile) { _state.value = _state.value.copy(fullscreenImage = img, fullscreenSource = _state.value.images.ifEmpty { favoriteImages() }) }
+    fun openFullscreenFrom(img: ImageFile, source: List<ImageFile>) { _state.value = _state.value.copy(fullscreenImage = img, fullscreenSource = source) }
     fun showNextFullscreen() = shiftFullscreen(1)
     fun showPreviousFullscreen() = shiftFullscreen(-1)
     private fun shiftFullscreen(delta: Int) {
         val current = _state.value.fullscreenImage ?: return
-        val source = if (_state.value.images.any { it.path == current.path }) _state.value.images else favoriteImages()
+        val source = _state.value.fullscreenSource.ifEmpty { if (_state.value.images.any { it.path == current.path }) _state.value.images else favoriteImages() }
         val idx = source.indexOfFirst { it.path == current.path }
         val target = idx + delta
         if (idx >= 0 && target in source.indices) _state.value = _state.value.copy(fullscreenImage = source[target])

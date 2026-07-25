@@ -79,18 +79,6 @@ class MainActivity : ComponentActivity() {
                     vm.setTab(1)
                 }
 
-                state.fullscreenImage?.let { img ->
-                    FullscreenViewer(
-                        img,
-                        vm.isFavorite(img.path),
-                        onToggleFavorite = { vm.toggleFavorite(img.path) },
-                        onNext = { vm.showNextFullscreen() },
-                        onPrevious = { vm.showPreviousFullscreen() },
-                        onDismiss = { vm.closeFullscreen() }
-                    )
-                    return@MaterialTheme
-                }
-
                 val tabs = listOf(
                     TabItem("浏览", Icons.Default.PhotoLibrary, Icons.Outlined.Image),
                     TabItem("未浏览", Icons.Default.Folder, Icons.Outlined.Folder),
@@ -198,12 +186,17 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                            3 -> FavoritesScreen(
-                                favorites = vm.favoriteImages(),
-                                columns = state.favoriteColumns,
-                                onColumnsChange = { vm.setFavoriteColumns(it) },
-                                onImageClick = { vm.openFullscreen(it) }
-                            )
+                            3 -> {
+                                val favs = vm.favoriteImages()
+                                FavoritesScreen(
+                                    favorites = favs,
+                                    columns = state.favoriteColumns,
+                                    onColumnsChange = { vm.setFavoriteColumns(it) },
+                                    onImageClick = { vm.openFullscreenFrom(it, favs) },
+                                    onUnfavoriteSelected = { vm.unFavoriteMany(it) },
+                                    onDeleteSelected = { vm.deleteFavoriteImages(it) }
+                                )
+                            }
                             4 -> SettingsScreen(
                                 roots = state.roots,
                                 networkFolders = state.networkFolders,
@@ -233,6 +226,16 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                }
+                state.fullscreenImage?.let { img ->
+                    FullscreenViewer(
+                        img,
+                        vm.isFavorite(img.path),
+                        onToggleFavorite = { vm.toggleFavorite(img.path) },
+                        onNext = { vm.showNextFullscreen() },
+                        onPrevious = { vm.showPreviousFullscreen() },
+                        onDismiss = { vm.closeFullscreen() }
+                    )
                 }
                 state.transientNotice?.let { notice ->
                     Box(Modifier.matchParentSize(), contentAlignment = Alignment.TopCenter) {
