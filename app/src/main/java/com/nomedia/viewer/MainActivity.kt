@@ -69,12 +69,10 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme(primary = AccentBlue, secondary = AccentGold, background = DarkBackground, surface = DarkSurface, onBackground = TextPrimary, onSurface = TextPrimary)) {
                 val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(repo, storage, network))
                 val state by vm.state.collectAsState()
-                var showSplash by remember { mutableStateOf(true) }
+                var showSplash by remember { mutableStateOf(false) }
                 var showExitDialog by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {
                     checkPermissions()
-                    delay(260)
-                    showSplash = false
                 }
 
                 BackHandler(enabled = state.fullscreenImage != null) {
@@ -272,9 +270,6 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { vm.closeFullscreen() }
                     )
                 }
-                if (state.loading && !showSplash) {
-                    YellowLoadingOverlay(if (state.currentTab == 4) "导入中…" else "加载中…")
-                }
                 state.transientNotice?.let { notice ->
                     Box(Modifier.matchParentSize(), contentAlignment = Alignment.TopCenter) {
                         Surface(
@@ -285,12 +280,6 @@ class MainActivity : ComponentActivity() {
                             Text(notice, color = Color.White, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                         }
                     }
-                }
-                AnimatedVisibility(
-                    visible = showSplash,
-                    exit = fadeOut(animationSpec = tween(160))
-                ) {
-                    YellowLoadingOverlay("LOADING")
                 }
             }
         }
