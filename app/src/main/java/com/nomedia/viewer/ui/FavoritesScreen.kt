@@ -62,7 +62,8 @@ fun FavoritesScreen(
                 Button(shape = RoundedCornerShape(8.dp), onClick = { onDeleteSelected(selection); selection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
             }
         }
-        LazyVerticalGrid(
+        Box(Modifier.fillMaxSize()) {
+            LazyVerticalGrid(
             columns = GridCells.Fixed(columns.coerceIn(1, 6)),
             state = state,
             modifier = Modifier
@@ -110,6 +111,9 @@ fun FavoritesScreen(
                     }
                 }
             }
+        }
+            val progress = if (favorites.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (favorites.size - 1).coerceAtLeast(1)
+            RightScrollProgressBar(progress)
         }
     }
 }

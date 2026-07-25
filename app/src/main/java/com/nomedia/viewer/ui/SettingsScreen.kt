@@ -110,7 +110,9 @@ fun SettingsScreen(
         )
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    val scrollState = rememberScrollState()
+    Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(16.dp)) {
         Text("设置", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Button(shape = RoundedCornerShape(8.dp), onClick = onExportLogs, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
@@ -192,14 +194,14 @@ fun SettingsScreen(
             Slider(
                 value = scrollSpeed,
                 onValueChange = onScrollSpeed,
-                valueRange = 1f..4f,
+                valueRange = 1f..10f,
                 colors = SliderDefaults.colors(
                     thumbColor = Color(0xFFFFB000),
                     activeTrackColor = Color(0xFFFFB000),
                     inactiveTrackColor = Color(0xFF444444)
                 )
             )
-            Text("正常为1x，最高4x；只影响浏览界面上下滑动速度", color = Color(0xFFB0B0B0), fontSize = 12.sp)
+            Text("正常为1x，最高10x；只影响浏览界面上下滑动速度", color = Color(0xFFB0B0B0), fontSize = 12.sp)
         }
         Spacer(Modifier.height(16.dp))
         Section("收藏布局") {
@@ -256,6 +258,9 @@ fun SettingsScreen(
             }
         }
         Spacer(Modifier.height(50.dp))
+    }
+        val progress = if (scrollState.maxValue == 0) 1f else scrollState.value.toFloat() / scrollState.maxValue
+        RightScrollProgressBar(progress)
     }
 }
 

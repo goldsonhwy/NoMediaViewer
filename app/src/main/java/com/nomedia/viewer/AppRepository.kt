@@ -143,8 +143,8 @@ class AppRepository(private val context: Context) {
     fun setColumns(v: Int) = prefs.edit().putInt("columns", v.coerceIn(1, 6)).apply()
     fun favoriteColumns(): Int = prefs.getInt("favorite_columns", 2).coerceIn(1, 6)
     fun setFavoriteColumns(v: Int) = prefs.edit().putInt("favorite_columns", v.coerceIn(1, 6)).apply()
-    fun scrollSpeed(): Float = prefs.getFloat("scroll_speed", 1f).coerceIn(1f, 4f)
-    fun setScrollSpeed(v: Float) = prefs.edit().putFloat("scroll_speed", v.coerceIn(1f, 4f)).apply()
+    fun scrollSpeed(): Float = prefs.getFloat("scroll_speed", 1f).coerceIn(1f, 10f)
+    fun setScrollSpeed(v: Float) = prefs.edit().putFloat("scroll_speed", v.coerceIn(1f, 10f)).apply()
 
     private fun toImageFile(f: File): ImageFile {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,12 +40,14 @@ fun FolderBrowserScreen(
     onAlbumClick: (String) -> Unit,
     onAlbumLongClick: (String) -> Unit
 ) {
+    val gridState = rememberLazyGridState()
     Box(Modifier.fillMaxSize()) {
         when {
             loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(color = Color(0xFFFFB000)); Spacer(Modifier.height(10.dp)); Text("读取中…", color = Color.White) } }
             albums.isEmpty() -> EmptyFolder(message ?: "请先在设置中添加手机文件夹")
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
+                state = gridState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -90,6 +93,8 @@ fun FolderBrowserScreen(
                 }
             }
         }
+        val progress = if (albums.size <= 1) 1f else gridState.firstVisibleItemIndex.toFloat() / (albums.size - 1).coerceAtLeast(1)
+        RightScrollProgressBar(progress)
     }
 }
 

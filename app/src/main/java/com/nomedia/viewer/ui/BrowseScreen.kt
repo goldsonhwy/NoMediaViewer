@@ -102,12 +102,13 @@ private fun OneColumn(
             if (idx > 0 && idx - 1 in images.indices) onViewed(images[idx - 1].path)
         }
     }
-    LazyColumn(
-        state = state,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .pointerInput(images, scrollSpeed) {
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = state,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(images, scrollSpeed) {
                 detectDragGestures(
                     onDragStart = { drag = Offset.Zero },
                     onDrag = { change, amount ->
@@ -130,6 +131,9 @@ private fun OneColumn(
         verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
         itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
+    }
+        val progress = if (images.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (images.size - 1).coerceAtLeast(1)
+        RightScrollProgressBar(progress)
     }
 }
 
@@ -159,7 +163,8 @@ private fun MultiColumn(
             ((start - columns) until (start + columns)).forEach { idx -> if (idx in images.indices) onViewed(images[idx].path) }
         }
     }
-    LazyVerticalGrid(
+    Box(Modifier.fillMaxSize()) {
+        LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         state = state,
         modifier = Modifier
@@ -193,6 +198,9 @@ private fun MultiColumn(
             key = { _, it -> it.path },
             span = { _, img -> if (img.width > img.height && columns > 1) GridItemSpan(landscapeSpan(columns)) else GridItemSpan(1) }
         ) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
+    }
+        val progress = if (images.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (images.size - 1).coerceAtLeast(1)
+        RightScrollProgressBar(progress)
     }
 }
 

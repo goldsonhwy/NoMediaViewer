@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.sp
 fun YellowLoadingOverlay(text: String, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
         val pulse by rememberInfiniteTransition(label = "yellow-loading").animateFloat(
-            initialValue = 0.35f,
+            initialValue = 0.05f,
             targetValue = 1f,
-            animationSpec = infiniteRepeatable(animation = tween(650), repeatMode = RepeatMode.Reverse),
+            animationSpec = infiniteRepeatable(animation = tween(950), repeatMode = RepeatMode.Restart),
             label = "pulse"
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
