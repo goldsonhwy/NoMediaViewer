@@ -42,7 +42,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     private var noticeJob: Job? = null
     private var rootsSignature: String = ""
 
-    init { reloadBasics(); scanAlbums(force = true) }
+    init { reloadBasics(); viewModelScope.launch { delay(420); scanAlbums(force = true) } }
 
     fun reloadBasics() {
         _state.value = _state.value.copy(

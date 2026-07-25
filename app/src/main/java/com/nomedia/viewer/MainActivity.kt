@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                 var showExitDialog by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {
                     checkPermissions()
-                    delay(520)
+                    delay(260)
                     showSplash = false
                 }
 

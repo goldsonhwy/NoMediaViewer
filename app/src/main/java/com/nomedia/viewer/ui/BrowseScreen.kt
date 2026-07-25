@@ -113,10 +113,10 @@ private fun OneColumn(
                     onDragStart = { drag = Offset.Zero },
                     onDrag = { change, amount ->
                         drag += amount
-                        if (abs(amount.y) > abs(amount.x) && scrollSpeed > 1.01f) {
-                            scope.launch { state.scrollBy(-amount.y * (scrollSpeed - 1f)) }
-                        }
-                        if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
+                        if (abs(amount.y) > abs(amount.x)) {
+                            scope.launch { state.scrollBy(-amount.y * scrollSpeed) }
+                            change.consume()
+                        } else if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
                     },
                     onDragEnd = {
                         when {
@@ -133,7 +133,7 @@ private fun OneColumn(
         itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
         val progress = if (images.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (images.size - 1).coerceAtLeast(1)
-        RightScrollProgressBar(progress)
+        RightScrollProgressBar(progress, visibleFraction = (5f / images.size.coerceAtLeast(1)).coerceAtMost(1f))
     }
 }
 
@@ -175,10 +175,10 @@ private fun MultiColumn(
                     onDragStart = { drag = Offset.Zero },
                     onDrag = { change, amount ->
                         drag += amount
-                        if (abs(amount.y) > abs(amount.x) && scrollSpeed > 1.01f) {
-                            scope.launch { state.scrollBy(-amount.y * (scrollSpeed - 1f)) }
-                        }
-                        if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
+                        if (abs(amount.y) > abs(amount.x)) {
+                            scope.launch { state.scrollBy(-amount.y * scrollSpeed) }
+                            change.consume()
+                        } else if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
                     },
                     onDragEnd = {
                         when {
@@ -200,7 +200,7 @@ private fun MultiColumn(
         ) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
         val progress = if (images.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (images.size - 1).coerceAtLeast(1)
-        RightScrollProgressBar(progress)
+        RightScrollProgressBar(progress, visibleFraction = (5f / images.size.coerceAtLeast(1)).coerceAtMost(1f))
     }
 }
 

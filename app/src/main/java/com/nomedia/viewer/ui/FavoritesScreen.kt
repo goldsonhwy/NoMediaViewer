@@ -113,7 +113,7 @@ fun FavoritesScreen(
             }
         }
             val progress = if (favorites.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (favorites.size - 1).coerceAtLeast(1)
-            RightScrollProgressBar(progress)
+            RightScrollProgressBar(progress, visibleFraction = (8f / favorites.size.coerceAtLeast(1)).coerceAtMost(1f))
         }
     }
 }

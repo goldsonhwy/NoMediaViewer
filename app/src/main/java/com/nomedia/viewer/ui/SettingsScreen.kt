@@ -260,7 +260,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(50.dp))
     }
         val progress = if (scrollState.maxValue == 0) 1f else scrollState.value.toFloat() / scrollState.maxValue
-        RightScrollProgressBar(progress)
+        RightScrollProgressBar(progress, visibleFraction = if (scrollState.maxValue == 0) 1f else 0.22f)
     }
 }
 
