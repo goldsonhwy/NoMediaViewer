@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -29,6 +31,8 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import com.nomedia.viewer.ImageFile
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun BrowseScreen(
@@ -36,6 +40,7 @@ fun BrowseScreen(
     images: List<ImageFile>,
     columns: Int,
     onColumnsChange: (Int) -> Unit,
+    scrollSpeed: Float,
     isFavorite: (String) -> Boolean,
     isRead: (String) -> Boolean,
     onFavorite: (String) -> Unit,
@@ -51,7 +56,6 @@ fun BrowseScreen(
         Box(Modifier.fillMaxSize(), Alignment.Center) { Text("请先从文件夹页选择一个相册", color = Color(0xFF888888)) }
         return
     }
-    var dragX by remember { mutableFloatStateOf(0f) }
     var lastZoomChange by remember { mutableLongStateOf(0L) }
     Box(
         Modifier
@@ -67,64 +71,128 @@ fun BrowseScreen(
                     }
                 }
             }
-            .pointerInput(images) {
-                detectDragGestures(
-                    onDragStart = { dragX = 0f },
-                    onDrag = { change, dragAmount -> dragX += dragAmount.x; change.consume() },
-                    onDragEnd = {
-                        when {
-                            dragX < -120f -> onSwipeLeft()
-                            dragX > 120f -> onSwipeRight()
-                        }
-                        dragX = 0f
-                    },
-                    onDragCancel = { dragX = 0f }
-                )
-            }
     ) {
-        if (columns > 1) MultiColumn(images, columns, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onScrollUp, onScrollDown)
-        else OneColumn(images, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onScrollUp, onScrollDown)
+        if (columns > 1) MultiColumn(images, columns, scrollSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        else OneColumn(images, scrollSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
     }
 }
 
 @Composable
-private fun OneColumn(images: List<ImageFile>, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
+private fun OneColumn(
+    images: List<ImageFile>,
+    scrollSpeed: Float,
+    isFavorite: (String)->Boolean,
+    isRead: (String)->Boolean,
+    onFavorite:(String)->Unit,
+    onOpenFull:(ImageFile)->Unit,
+    onViewed:(String)->Unit,
+    onSwipeLeft:()->Unit,
+    onSwipeRight:()->Unit,
+    onScrollUp:()->Unit,
+    onScrollDown:()->Unit
+) {
     val state = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    var drag by remember { mutableStateOf(Offset.Zero) }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
+    LaunchedEffect(images) { state.scrollToItem(0) }
     LaunchedEffect(state, images) {
         snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { idx ->
             if (idx in images.indices) onViewed(images[idx].path)
             if (idx > 0 && idx - 1 in images.indices) onViewed(images[idx - 1].path)
         }
     }
-    LazyColumn(state = state, modifier = Modifier.fillMaxSize().background(Color.Black), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+    LazyColumn(
+        state = state,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(images, scrollSpeed) {
+                detectDragGestures(
+                    onDragStart = { drag = Offset.Zero },
+                    onDrag = { change, amount ->
+                        drag += amount
+                        if (abs(amount.y) > abs(amount.x) && scrollSpeed > 1.01f) {
+                            scope.launch { state.scrollBy(-amount.y * (scrollSpeed - 1f)) }
+                        }
+                        if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
+                    },
+                    onDragEnd = {
+                        when {
+                            drag.x < -150f && abs(drag.x) > abs(drag.y) * 1.5f -> onSwipeLeft()
+                            drag.x > 150f && abs(drag.x) > abs(drag.y) * 1.5f -> onSwipeRight()
+                        }
+                        drag = Offset.Zero
+                    },
+                    onDragCancel = { drag = Offset.Zero }
+                )
+            },
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
         itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
 }
 
 @Composable
-private fun MultiColumn(images: List<ImageFile>, columns: Int, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit, onViewed:(String)->Unit, onScrollUp:()->Unit, onScrollDown:()->Unit) {
+private fun MultiColumn(
+    images: List<ImageFile>,
+    columns: Int,
+    scrollSpeed: Float,
+    isFavorite: (String)->Boolean,
+    isRead: (String)->Boolean,
+    onFavorite:(String)->Unit,
+    onOpenFull:(ImageFile)->Unit,
+    onViewed:(String)->Unit,
+    onSwipeLeft:()->Unit,
+    onSwipeRight:()->Unit,
+    onScrollUp:()->Unit,
+    onScrollDown:()->Unit
+) {
     val state = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
+    var drag by remember { mutableStateOf(Offset.Zero) }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
+    LaunchedEffect(images, columns) { state.scrollToItem(0) }
     LaunchedEffect(state, images) {
         snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { first ->
             val start = (first / columns) * columns
-            ((start - columns) until (start + columns)).forEach { idx ->
-                if (idx in images.indices) onViewed(images[idx].path)
-            }
+            ((start - columns) until (start + columns)).forEach { idx -> if (idx in images.indices) onViewed(images[idx].path) }
         }
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize().background(Color.Black),
-        horizontalArrangement = Arrangement.spacedBy(1.dp), verticalArrangement = Arrangement.spacedBy(1.dp)
+        columns = GridCells.Fixed(columns),
+        state = state,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(images, columns, scrollSpeed) {
+                detectDragGestures(
+                    onDragStart = { drag = Offset.Zero },
+                    onDrag = { change, amount ->
+                        drag += amount
+                        if (abs(amount.y) > abs(amount.x) && scrollSpeed > 1.01f) {
+                            scope.launch { state.scrollBy(-amount.y * (scrollSpeed - 1f)) }
+                        }
+                        if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
+                    },
+                    onDragEnd = {
+                        when {
+                            drag.x < -150f && abs(drag.x) > abs(drag.y) * 1.5f -> onSwipeLeft()
+                            drag.x > 150f && abs(drag.x) > abs(drag.y) * 1.5f -> onSwipeRight()
+                        }
+                        drag = Offset.Zero
+                    },
+                    onDragCancel = { drag = Offset.Zero }
+                )
+            },
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
         itemsIndexed(
             images,
             key = { _, it -> it.path },
             span = { _, img -> if (img.width > img.height && columns > 1) GridItemSpan(landscapeSpan(columns)) else GridItemSpan(1) }
-        ) { _, img ->
-            ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull)
-        }
+        ) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
 }
 

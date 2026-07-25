@@ -32,8 +32,10 @@ fun SettingsScreen(
     storageConfig: StorageConfig,
     columns: Int,
     favoriteColumns: Int,
+    scrollSpeed: Float,
     onColumns: (Int) -> Unit,
     onFavoriteColumns: (Int) -> Unit,
+    onScrollSpeed: (Float) -> Unit,
     onAddRoot: (Uri) -> Unit,
     onAddNetworkFolder: (com.nomedia.viewer.NetworkFolderType, String, String, String, String, (String) -> Unit) -> Unit,
     onUpdateNetworkFolder: (String, com.nomedia.viewer.NetworkFolderType, String, String, String, String, Boolean, (String) -> Unit) -> Unit,
@@ -183,6 +185,21 @@ fun SettingsScreen(
                     )
                 }
             }
+        }
+        Spacer(Modifier.height(16.dp))
+        Section("滑动速度") {
+            Text("浏览页滑动速度：${String.format("%.1f", scrollSpeed)}x", color = Color.White, fontSize = 14.sp)
+            Slider(
+                value = scrollSpeed,
+                onValueChange = onScrollSpeed,
+                valueRange = 1f..4f,
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFFFFB000),
+                    activeTrackColor = Color(0xFFFFB000),
+                    inactiveTrackColor = Color(0xFF444444)
+                )
+            )
+            Text("正常为1x，最高4x；只影响浏览界面上下滑动速度", color = Color(0xFFB0B0B0), fontSize = 12.sp)
         }
         Spacer(Modifier.height(16.dp))
         Section("收藏布局") {
