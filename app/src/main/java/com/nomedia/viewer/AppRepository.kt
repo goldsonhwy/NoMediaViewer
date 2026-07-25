@@ -7,6 +7,8 @@ import java.io.File
 
 class AppRepository(private val context: Context) {
     private val prefs = context.getSharedPreferences("setu_pinjian_v10", Context.MODE_PRIVATE)
+    private val indexStore = ImageIndexStore(context)
+    private var activeIndex: MutableMap<String, ImageIndexStore.Entry>? = null
     private val imageExt = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
 
     fun addRoot(uri: Uri): RootFolder? {
@@ -33,6 +35,8 @@ class AppRepository(private val context: Context) {
     fun deleteAlbumFolder(path: String): Boolean = runCatching { File(path).deleteRecursively() }.getOrDefault(false)
 
     fun enabledRootPaths(): List<String> = roots().filter { it.enabled }.map { it.path }
+
+    fun cachedAlbums(): List<FolderAlbum> = albumsFromImages(indexStore.load().values.map { it.toImageFile() })
 
     fun networkFolders(): List<NetworkFolder> = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).mapNotNull { raw ->
         val p = raw.split("\u001f", limit = 7)
@@ -62,16 +66,21 @@ class AppRepository(private val context: Context) {
     }
 
     fun scanAlbums(network: NetworkFolderManager? = null): List<FolderAlbum> {
-        val grouped = mutableMapOf<String, MutableList<ImageFile>>()
-        enabledRootPaths().forEach { root -> scanDir(File(root), grouped, 0) }
+        val images = mutableListOf<ImageFile>()
+        val index = indexStore.load()
+        activeIndex = index
+        enabledRootPaths().forEach { root -> scanDir(File(root), images, 0) }
         networkFolders().filter { it.enabled }.forEach { nf ->
             val cachedPaths = network?.let { runCatching { kotlinx.coroutines.runBlocking { it.scan(nf) } }.getOrDefault(emptyList()) } ?: emptyList()
-            cachedPaths.forEach { p ->
-                val img = toImageFile(File(p))
-                grouped.getOrPut(img.parentPath) { mutableListOf() }.add(img)
-            }
+            cachedPaths.forEach { p -> images.add(toImageFile(File(p))) }
         }
-        return grouped.values.mapNotNull { list ->
+        indexStore.save(images.map { ImageIndexStore.Entry(it.path, it.parentPath, it.name, it.size, it.lastModified, it.width, it.height) })
+        activeIndex = null
+        return albumsFromImages(images)
+    }
+
+    private fun albumsFromImages(images: List<ImageFile>): List<FolderAlbum> {
+        return images.groupBy { it.parentPath }.values.mapNotNull { list ->
             val sorted = list.sortedByDescending { it.lastModified }
             val first = sorted.firstOrNull() ?: return@mapNotNull null
             FolderAlbum(
@@ -87,18 +96,20 @@ class AppRepository(private val context: Context) {
 
     fun scanImages(paths: List<String>): List<ImageFile> {
         val all = mutableListOf<ImageFile>()
+        val index = indexStore.load()
+        activeIndex = index
         paths.distinct().forEach { scanDirFlat(File(it), all, 0) }
+        indexStore.save(index.values)
+        activeIndex = null
         return all.sortedWith(compareBy<ImageFile> { it.width > it.height }.thenByDescending { it.lastModified })
     }
 
-    private fun scanDir(dir: File, grouped: MutableMap<String, MutableList<ImageFile>>, depth: Int) {
+    private fun scanDir(dir: File, out: MutableList<ImageFile>, depth: Int) {
         if (depth > 30 || !dir.exists() || !dir.isDirectory || !dir.canRead()) return
         val files = runCatching { dir.listFiles() }.getOrNull() ?: return
         files.forEach { f ->
-            if (f.isDirectory) scanDir(f, grouped, depth + 1)
-            else if (f.isFile && f.extension.lowercase() in imageExt) {
-                grouped.getOrPut(f.parentFile?.absolutePath ?: dir.absolutePath) { mutableListOf() }.add(toImageFile(f))
-            }
+            if (f.isDirectory) scanDir(f, out, depth + 1)
+            else if (f.isFile && f.extension.lowercase() in imageExt) out.add(toImageFile(f))
         }
     }
 
@@ -147,9 +158,11 @@ class AppRepository(private val context: Context) {
     fun setScrollSpeed(v: Float) = prefs.edit().putFloat("scroll_speed", v.coerceIn(1f, 3f)).apply()
 
     private fun toImageFile(f: File): ImageFile {
+        val cached = activeIndex?.get(f.absolutePath)
+        if (cached != null && cached.size == f.length() && cached.lastModified == f.lastModified()) return cached.toImageFile()
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         runCatching { BitmapFactory.decodeFile(f.absolutePath, opts) }
-        return ImageFile(
+        val img = ImageFile(
             f.absolutePath,
             f.name,
             f.parentFile?.absolutePath ?: "",
@@ -158,6 +171,8 @@ class AppRepository(private val context: Context) {
             opts.outWidth.coerceAtLeast(0),
             opts.outHeight.coerceAtLeast(0)
         )
+        activeIndex?.put(img.path, ImageIndexStore.Entry(img.path, img.parentPath, img.name, img.size, img.lastModified, img.width, img.height))
+        return img
     }
 
     fun storageConfig(): StorageConfig = StorageConfig(
