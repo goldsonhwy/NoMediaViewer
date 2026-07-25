@@ -93,8 +93,10 @@ fun FolderBrowserScreen(
                 }
             }
         }
-        val progress = if (albums.size <= 1) 1f else gridState.firstVisibleItemIndex.toFloat() / (albums.size - 1).coerceAtLeast(1)
-        RightScrollProgressBar(progress, visibleFraction = (9f / albums.size.coerceAtLeast(1)).coerceAtMost(1f))
+        val visible = gridState.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
+        val maxIndex = (albums.size - visible).coerceAtLeast(1)
+        val progress = gridState.firstVisibleItemIndex.toFloat() / maxIndex
+        RightScrollProgressBar(progress, visibleFraction = (visible.toFloat() / albums.size.coerceAtLeast(1)).coerceAtMost(1f))
     }
 }
 

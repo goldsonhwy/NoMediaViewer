@@ -194,14 +194,14 @@ fun SettingsScreen(
             Slider(
                 value = scrollSpeed,
                 onValueChange = onScrollSpeed,
-                valueRange = 1f..10f,
+                valueRange = 1f..5f,
                 colors = SliderDefaults.colors(
                     thumbColor = Color(0xFFFFB000),
                     activeTrackColor = Color(0xFFFFB000),
                     inactiveTrackColor = Color(0xFF444444)
                 )
             )
-            Text("正常为1x，最高10x；只影响浏览界面上下滑动速度", color = Color(0xFFB0B0B0), fontSize = 12.sp)
+            Text("正常为1x，最高5x；只影响浏览界面上下滑动速度", color = Color(0xFFB0B0B0), fontSize = 12.sp)
         }
         Spacer(Modifier.height(16.dp))
         Section("收藏布局") {

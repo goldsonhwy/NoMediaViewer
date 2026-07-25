@@ -14,7 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 data class AppState(
-    val currentTab: Int = 1,
+    val currentTab: Int = 4,
     val roots: List<RootFolder> = emptyList(),
     val networkFolders: List<NetworkFolder> = emptyList(),
     val albums: List<FolderAlbum> = emptyList(),
@@ -44,7 +44,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     private var noticeJob: Job? = null
     private var rootsSignature: String = ""
 
-    init { reloadBasics(); viewModelScope.launch { delay(420); scanAlbums(force = true) } }
+    init { reloadBasics(); viewModelScope.launch { delay(1200); scanAlbums(force = true) } }
 
     fun reloadBasics() {
         _state.value = _state.value.copy(
