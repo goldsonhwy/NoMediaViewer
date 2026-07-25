@@ -31,7 +31,8 @@ data class AppState(
     val transientNotice: String? = null,
     val storageConfig: StorageConfig = StorageConfig(),
     val fullscreenImage: ImageFile? = null,
-    val fullscreenSource: List<ImageFile> = emptyList()
+    val fullscreenSource: List<ImageFile> = emptyList(),
+    val browseReturnTab: Int = 1
 )
 
 class MainViewModel(private val repo: AppRepository, private val storage: StorageManager, private val network: NetworkFolderManager) : ViewModel() {
@@ -99,6 +100,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         scanJob = viewModelScope.launch {
             val nets = repo.networkFolders()
             _state.value = _state.value.copy(loading = true, message = null, roots = roots, networkFolders = nets, viewed = repo.viewed())
+            delay(140)
             if (roots.none { it.enabled } && (includeNetwork.not() || nets.none { it.enabled })) {
                 _state.value = _state.value.copy(loading = false, albums = emptyList(), message = if (roots.isEmpty() && (includeNetwork.not() || nets.isEmpty())) "请先在设置中添加手机文件夹；网络文件夹请在设置里手动刷新" else "请启用至少一个目录")
                 return@launch
@@ -111,12 +113,13 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     }
 
     fun toggleAlbum(path: String) { markAlbumRead(path) }
-    fun browseAlbum(path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path)
+    fun browseAlbum(path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, _state.value.currentTab.coerceIn(1, 4))
+    fun browseAlbumFrom(tab: Int, path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, tab)
     fun browseSelectedAlbums() { /* v0.15: 合并浏览已取消 */ }
     fun browseMergedAlbums(paths: Set<String>) {
         if (paths.isEmpty()) return
         val names = _state.value.albums.filter { it.path in paths }.map { it.name }
-        browsePaths(paths.toList(), if (names.size <= 2) names.joinToString(" + ") else "合并浏览 ${names.size} 个相册", null)
+        browsePaths(paths.toList(), if (names.size <= 2) names.joinToString(" + ") else "合并浏览 ${names.size} 个相册", null, _state.value.currentTab.coerceIn(1, 2))
     }
 
     fun markAlbumRead(path: String) {
@@ -149,10 +152,11 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         scanAlbums(true)
     }
 
-    private fun browsePaths(paths: List<String>, title: String, albumPath: String?) = viewModelScope.launch {
-        _state.value = _state.value.copy(loading = true, message = null)
+    private fun browsePaths(paths: List<String>, title: String, albumPath: String?, returnTab: Int) = viewModelScope.launch {
+        _state.value = _state.value.copy(loading = true, message = null, browseReturnTab = returnTab)
+        delay(120)
         val imgs = repo.scanImages(paths)
-        _state.value = _state.value.copy(currentTab = 0, browsingTitle = title, currentAlbumPath = albumPath, images = imgs, viewed = repo.viewed(), favorites = repo.favorites(), loading = false, bottomBarVisible = true, message = if (imgs.isEmpty()) "该文件夹没有图片" else null)
+        _state.value = _state.value.copy(currentTab = 0, browsingTitle = title, currentAlbumPath = albumPath, images = imgs, viewed = repo.viewed(), favorites = repo.favorites(), loading = false, bottomBarVisible = true, browseReturnTab = returnTab, message = if (imgs.isEmpty()) "该文件夹没有图片" else null)
     }
 
     fun markRead(path: String) { repo.markViewed(path); _state.value = _state.value.copy(viewed = repo.viewed()) }

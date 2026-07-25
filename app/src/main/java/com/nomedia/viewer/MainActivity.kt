@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
                 val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(repo, storage, network))
                 val state by vm.state.collectAsState()
                 var showSplash by remember { mutableStateOf(true) }
+                var showExitDialog by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {
                     checkPermissions()
                     delay(520)
@@ -80,7 +81,10 @@ class MainActivity : ComponentActivity() {
                     vm.closeFullscreen()
                 }
                 BackHandler(enabled = state.fullscreenImage == null && state.currentTab == 0) {
-                    vm.setTab(1)
+                    vm.setTab(state.browseReturnTab)
+                }
+                BackHandler(enabled = state.fullscreenImage == null && state.currentTab != 0) {
+                    showExitDialog = true
                 }
 
                 val tabs = listOf(
@@ -162,7 +166,7 @@ class MainActivity : ComponentActivity() {
                                         Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Text("已选 ${unreadSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection = unreadAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
-                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection.forEach { vm.markAlbumRead(it) }; unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("已浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
                                         }
@@ -174,7 +178,7 @@ class MainActivity : ComponentActivity() {
                                         message = state.message ?: "没有未浏览文件夹",
                                         selectedPaths = unreadSelection,
                                         selectionMode = unreadSelection.isNotEmpty(),
-                                        onAlbumClick = { vm.browseAlbum(it) },
+                                        onAlbumClick = { vm.browseAlbumFrom(1, it) },
                                         onAlbumLongClick = { path -> unreadSelection = if (path in unreadSelection) unreadSelection - path else unreadSelection + path }
                                     )
                                 }
@@ -188,7 +192,7 @@ class MainActivity : ComponentActivity() {
                                         Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Text("已选 ${readSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { readSelection = readAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
-                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.restoreAlbumsUnread(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("未浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
                                         }
@@ -200,7 +204,7 @@ class MainActivity : ComponentActivity() {
                                         message = state.message ?: "还没有已浏览文件夹",
                                         selectedPaths = readSelection,
                                         selectionMode = readSelection.isNotEmpty(),
-                                        onAlbumClick = { vm.browseAlbum(it) },
+                                        onAlbumClick = { vm.browseAlbumFrom(2, it) },
                                         onAlbumLongClick = { path -> readSelection = if (path in readSelection) readSelection - path else readSelection + path }
                                     )
                                 }
@@ -245,6 +249,18 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                }
+                if (showExitDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showExitDialog = false },
+                        title = { Text("退出 Yellow-gallery？") },
+                        text = { Text("确定要退出软件吗？") },
+                        confirmButton = { Button(shape = RoundedCornerShape(8.dp), onClick = { finish() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("退出") } },
+                        dismissButton = { Button(shape = RoundedCornerShape(8.dp), onClick = { showExitDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("取消") } },
+                        containerColor = Color(0xFF111111),
+                        titleContentColor = Color.White,
+                        textContentColor = Color.White
+                    )
                 }
                 state.fullscreenImage?.let { img ->
                     FullscreenViewer(
