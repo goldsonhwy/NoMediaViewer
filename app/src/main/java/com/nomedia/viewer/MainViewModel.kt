@@ -113,6 +113,11 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun toggleAlbum(path: String) { markAlbumRead(path) }
     fun browseAlbum(path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path)
     fun browseSelectedAlbums() { /* v0.15: 合并浏览已取消 */ }
+    fun browseMergedAlbums(paths: Set<String>) {
+        if (paths.isEmpty()) return
+        val names = _state.value.albums.filter { it.path in paths }.map { it.name }
+        browsePaths(paths.toList(), if (names.size <= 2) names.joinToString(" + ") else "合并浏览 ${names.size} 个相册", null)
+    }
 
     fun markAlbumRead(path: String) {
         val album = _state.value.albums.find { it.path == path } ?: return

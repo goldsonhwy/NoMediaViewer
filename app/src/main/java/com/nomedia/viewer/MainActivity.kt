@@ -162,6 +162,7 @@ class MainActivity : ComponentActivity() {
                                         Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Text("已选 ${unreadSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection = unreadAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection.forEach { vm.markAlbumRead(it) }; unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("已浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
                                         }
@@ -187,6 +188,7 @@ class MainActivity : ComponentActivity() {
                                         Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Text("已选 ${readSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { readSelection = readAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.restoreAlbumsUnread(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("未浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
                                         }
@@ -254,6 +256,9 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { vm.closeFullscreen() }
                     )
                 }
+                if (state.loading && !showSplash) {
+                    YellowLoadingOverlay(if (state.currentTab == 4) "导入中…" else "加载中…")
+                }
                 state.transientNotice?.let { notice ->
                     Box(Modifier.matchParentSize(), contentAlignment = Alignment.TopCenter) {
                         Surface(
@@ -269,29 +274,7 @@ class MainActivity : ComponentActivity() {
                     visible = showSplash,
                     exit = fadeOut(animationSpec = tween(160))
                 ) {
-                    Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
-                        Surface(Modifier.matchParentSize(), color = Color.Black) {}
-                        val pulse by rememberInfiniteTransition(label = "splash").animateFloat(
-                            initialValue = 0.35f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(animation = tween(650), repeatMode = RepeatMode.Reverse),
-                            label = "pulse"
-                        )
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Yellow", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                                Surface(color = Color(0xFFFFB000), shape = RoundedCornerShape(6.dp), modifier = Modifier.padding(start = 4.dp)) {
-                                    Text("gallery", color = Color.Black, fontSize = 28.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
-                                }
-                            }
-                            Spacer(Modifier.height(18.dp))
-                            Box(Modifier.width(150.dp).height(4.dp).background(Color(0xFF222222), RoundedCornerShape(3.dp))) {
-                                Box(Modifier.fillMaxHeight().fillMaxWidth(pulse).background(Color(0xFFFFB000), RoundedCornerShape(3.dp)))
-                            }
-                            Spacer(Modifier.height(10.dp))
-                            Text("LOADING", color = Color(0xFF777777), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    YellowLoadingOverlay("LOADING")
                 }
             }
         }
