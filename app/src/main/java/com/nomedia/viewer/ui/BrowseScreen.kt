@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -93,6 +96,16 @@ private fun OneColumn(
 ) {
     val state = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val speedConnection = remember(scrollSpeed) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.Drag && scrollSpeed > 1.01f && abs(available.y) > abs(available.x)) {
+                    state.dispatchRawDelta(-available.y * (scrollSpeed - 1f))
+                }
+                return Offset.Zero
+            }
+        }
+    }
     var drag by remember { mutableStateOf(Offset.Zero) }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     LaunchedEffect(images) { state.scrollToItem(0) }
@@ -108,15 +121,13 @@ private fun OneColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
+                .nestedScroll(speedConnection)
                 .pointerInput(images, scrollSpeed) {
                 detectDragGestures(
                     onDragStart = { drag = Offset.Zero },
                     onDrag = { change, amount ->
                         drag += amount
-                        if (abs(amount.y) > abs(amount.x)) {
-                            scope.launch { state.scrollBy(-amount.y * scrollSpeed) }
-                            change.consume()
-                        } else if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
+                        if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
                     },
                     onDragEnd = {
                         when {
@@ -132,8 +143,10 @@ private fun OneColumn(
     ) {
         itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
-        val progress = if (images.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (images.size - 1).coerceAtLeast(1)
-        RightScrollProgressBar(progress, visibleFraction = (5f / images.size.coerceAtLeast(1)).coerceAtMost(1f))
+        val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
+        val maxIndex = (images.size - visible).coerceAtLeast(1)
+        val progress = state.firstVisibleItemIndex.toFloat() / maxIndex
+        RightScrollProgressBar(progress, visibleFraction = (visible.toFloat() / images.size.coerceAtLeast(1)).coerceAtMost(1f))
     }
 }
 
@@ -154,6 +167,16 @@ private fun MultiColumn(
 ) {
     val state = rememberLazyGridState()
     val scope = rememberCoroutineScope()
+    val speedConnection = remember(scrollSpeed) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.Drag && scrollSpeed > 1.01f && abs(available.y) > abs(available.x)) {
+                    state.dispatchRawDelta(-available.y * (scrollSpeed - 1f))
+                }
+                return Offset.Zero
+            }
+        }
+    }
     var drag by remember { mutableStateOf(Offset.Zero) }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     LaunchedEffect(images, columns) { state.scrollToItem(0) }
@@ -170,15 +193,13 @@ private fun MultiColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(images, columns, scrollSpeed) {
+                           .nestedScroll(speedConnection)
+                           .pointerInput(images, columns, scrollSpeed) {
                 detectDragGestures(
                     onDragStart = { drag = Offset.Zero },
                     onDrag = { change, amount ->
                         drag += amount
-                        if (abs(amount.y) > abs(amount.x)) {
-                            scope.launch { state.scrollBy(-amount.y * scrollSpeed) }
-                            change.consume()
-                        } else if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
+                        if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
                     },
                     onDragEnd = {
                         when {
@@ -199,8 +220,10 @@ private fun MultiColumn(
             span = { _, img -> if (img.width > img.height && columns > 1) GridItemSpan(landscapeSpan(columns)) else GridItemSpan(1) }
         ) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
     }
-        val progress = if (images.size <= 1) 1f else state.firstVisibleItemIndex.toFloat() / (images.size - 1).coerceAtLeast(1)
-        RightScrollProgressBar(progress, visibleFraction = (5f / images.size.coerceAtLeast(1)).coerceAtMost(1f))
+        val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
+        val maxIndex = (images.size - visible).coerceAtLeast(1)
+        val progress = state.firstVisibleItemIndex.toFloat() / maxIndex
+        RightScrollProgressBar(progress, visibleFraction = (visible.toFloat() / images.size.coerceAtLeast(1)).coerceAtMost(1f))
     }
 }
 

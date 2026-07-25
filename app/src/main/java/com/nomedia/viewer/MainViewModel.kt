@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class AppState(
     val currentTab: Int = 1,
@@ -106,7 +108,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
                 return@launch
             }
             AppLogger.log("开始扫描 includeNetwork=$includeNetwork")
-            val albums = repo.scanAlbums(if (includeNetwork) network else null)
+            val albums = withContext(Dispatchers.IO) { repo.scanAlbums(if (includeNetwork) network else null) }
             rootsSignature = sig
             _state.value = _state.value.copy(loading = false, albums = albums, viewed = repo.viewed(), message = if (albums.isEmpty()) "没有扫描到含图片的子目录" else null)
         }
@@ -155,7 +157,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     private fun browsePaths(paths: List<String>, title: String, albumPath: String?, returnTab: Int) = viewModelScope.launch {
         _state.value = _state.value.copy(loading = true, message = null, browseReturnTab = returnTab)
         delay(120)
-        val imgs = repo.scanImages(paths)
+        val imgs = withContext(Dispatchers.IO) { repo.scanImages(paths) }
         _state.value = _state.value.copy(currentTab = 0, browsingTitle = title, currentAlbumPath = albumPath, images = imgs, viewed = repo.viewed(), favorites = repo.favorites(), loading = false, bottomBarVisible = true, browseReturnTab = returnTab, message = if (imgs.isEmpty()) "该文件夹没有图片" else null)
     }
 
