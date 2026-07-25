@@ -20,6 +20,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -87,6 +91,7 @@ class MainActivity : ComponentActivity() {
                     TabItem("设置", Icons.Default.Settings, Icons.Outlined.Settings)
                 )
                 var readSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
+                var unreadSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
 
                 Box {
                     Scaffold(
@@ -152,14 +157,26 @@ class MainActivity : ComponentActivity() {
                             )
                             1 -> {
                                 val unreadAlbums = state.albums.filter { album -> album.imagePaths.none { it in state.viewed } }
-                                FolderBrowserScreen(
-                                    albums = unreadAlbums,
-                                    viewed = state.viewed,
-                                    loading = state.loading,
-                                    message = state.message ?: "没有未浏览文件夹",
-                                    onAlbumClick = { vm.browseAlbum(it) },
-                                    onAlbumLongClick = { vm.markAlbumRead(it) }
-                                )
+                                Column(Modifier.fillMaxSize()) {
+                                    if (unreadSelection.isNotEmpty()) {
+                                        Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Text("已选 ${unreadSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection = unreadAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection.forEach { vm.markAlbumRead(it) }; unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("已浏览") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
+                                        }
+                                    }
+                                    FolderBrowserScreen(
+                                        albums = unreadAlbums,
+                                        viewed = state.viewed,
+                                        loading = state.loading,
+                                        message = state.message ?: "没有未浏览文件夹",
+                                        selectedPaths = unreadSelection,
+                                        selectionMode = unreadSelection.isNotEmpty(),
+                                        onAlbumClick = { vm.browseAlbum(it) },
+                                        onAlbumLongClick = { path -> unreadSelection = if (path in unreadSelection) unreadSelection - path else unreadSelection + path }
+                                    )
+                                }
                             }
                             2 -> {
                                 val readAlbums = state.albums
@@ -253,12 +270,26 @@ class MainActivity : ComponentActivity() {
                     exit = fadeOut(animationSpec = tween(160))
                 ) {
                     Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
-                        Surface(Modifier.matchParentSize(), color = DarkBackground) {}
+                        Surface(Modifier.matchParentSize(), color = Color.Black) {}
+                        val pulse by rememberInfiniteTransition(label = "splash").animateFloat(
+                            initialValue = 0.35f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(animation = tween(650), repeatMode = RepeatMode.Reverse),
+                            label = "pulse"
+                        )
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color(0xFFFFB000), modifier = Modifier.padding(bottom = 14.dp))
-                            Text("Yellow-gallery", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.padding(5.dp))
-                            Text("正在进入…", color = Color(0xFFBDBDBD), fontSize = 12.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Yellow", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                                Surface(color = Color(0xFFFFB000), shape = RoundedCornerShape(6.dp), modifier = Modifier.padding(start = 4.dp)) {
+                                    Text("gallery", color = Color.Black, fontSize = 28.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                                }
+                            }
+                            Spacer(Modifier.height(18.dp))
+                            Box(Modifier.width(150.dp).height(4.dp).background(Color(0xFF222222), RoundedCornerShape(3.dp))) {
+                                Box(Modifier.fillMaxHeight().fillMaxWidth(pulse).background(Color(0xFFFFB000), RoundedCornerShape(3.dp)))
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Text("LOADING", color = Color(0xFF777777), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
