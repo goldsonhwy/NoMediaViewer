@@ -116,6 +116,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun markAlbumRead(path: String) {
         val album = _state.value.albums.find { it.path == path } ?: return
         album.imagePaths.forEach { repo.markViewed(it) }
+        repo.markAlbumViewed(path)
         _state.value = _state.value.copy(viewed = repo.viewed(), transientNotice = "已标记已读：${album.name}")
         noticeJob?.cancel()
         noticeJob = viewModelScope.launch { delay(1400); _state.value = _state.value.copy(transientNotice = null) }
@@ -127,6 +128,19 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         _state.value = _state.value.copy(viewed = repo.viewed(), transientNotice = "已恢复未浏览：${album.name}")
         noticeJob?.cancel()
         noticeJob = viewModelScope.launch { delay(1400); _state.value = _state.value.copy(transientNotice = null) }
+    }
+
+    fun albumViewedAt(path: String): Long = repo.albumViewedAt(path)
+    fun restoreAlbumsUnread(paths: Set<String>) {
+        val imgs = _state.value.albums.filter { it.path in paths }.flatMap { it.imagePaths }
+        repo.unmarkViewed(imgs)
+        _state.value = _state.value.copy(viewed = repo.viewed(), transientNotice = "已恢复未浏览：${paths.size}个文件夹")
+    }
+    fun deleteAlbums(paths: Set<String>) {
+        paths.forEach { repo.deleteAlbumFolder(it) }
+        rootsSignature = ""
+        _state.value = _state.value.copy(transientNotice = "已删除：${paths.size}个文件夹")
+        scanAlbums(true)
     }
 
     private fun browsePaths(paths: List<String>, title: String, albumPath: String?) = viewModelScope.launch {

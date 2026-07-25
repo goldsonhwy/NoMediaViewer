@@ -34,6 +34,8 @@ fun FolderBrowserScreen(
     viewed: Set<String>,
     loading: Boolean,
     message: String?,
+    selectedPaths: Set<String> = emptySet(),
+    selectionMode: Boolean = false,
     onAlbumClick: (String) -> Unit,
     onAlbumLongClick: (String) -> Unit
 ) {
@@ -50,9 +52,10 @@ fun FolderBrowserScreen(
             ) {
                 items(albums, key = { it.path }) { album ->
                     val allRead = album.imagePaths.isNotEmpty() && album.imagePaths.all { it in viewed }
+                    val selected = album.path in selectedPaths
                     Card(
                         modifier = Modifier.combinedClickable(
-                            onClick = { onAlbumClick(album.path) },
+                            onClick = { if (selectionMode) onAlbumLongClick(album.path) else onAlbumClick(album.path) },
                             onLongClick = { onAlbumLongClick(album.path) }
                         ),
                         shape = RoundedCornerShape(10.dp),
@@ -72,6 +75,10 @@ fun FolderBrowserScreen(
                                 contentScale = ContentScale.Crop
                             )
                             if (allRead) GreenCorner(modifier = Modifier.align(Alignment.TopStart), topRight = false, size = 18.dp)
+                            if (selected) {
+                                Box(Modifier.matchParentSize().background(Color(0x66FFB000)))
+                                Text("✓", color = Color.Black, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
+                            }
                             Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), color = Color(0x88000000)) {
                                 Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Text(album.name, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

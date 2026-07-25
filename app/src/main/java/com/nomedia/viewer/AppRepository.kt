@@ -30,6 +30,7 @@ class AppRepository(private val context: Context) {
         roots.remove(uri)
         prefs.edit().putStringSet("roots", roots).remove(enabledKey(uri)).apply()
     }
+    fun deleteAlbumFolder(path: String): Boolean = runCatching { File(path).deleteRecursively() }.getOrDefault(false)
 
     fun enabledRootPaths(): List<String> = roots().filter { it.enabled }.map { it.path }
 
@@ -113,7 +114,13 @@ class AppRepository(private val context: Context) {
     }
 
     fun viewed(): Set<String> = prefs.getStringSet("viewed", emptySet()) ?: emptySet()
-    fun markViewed(path: String) = prefs.edit().putStringSet("viewed", viewed().toMutableSet().also { it.add(path) }).apply()
+    fun markViewed(path: String) {
+        val set = viewed().toMutableSet().also { it.add(path) }
+        val parent = File(path).parent ?: ""
+        prefs.edit().putStringSet("viewed", set).putLong("album_viewed_at_${parent.hashCode()}", System.currentTimeMillis()).apply()
+    }
+    fun markAlbumViewed(path: String) = prefs.edit().putLong("album_viewed_at_${path.hashCode()}", System.currentTimeMillis()).apply()
+    fun albumViewedAt(path: String): Long = prefs.getLong("album_viewed_at_${path.hashCode()}", 0L)
     fun unmarkViewed(paths: Collection<String>) = prefs.edit().putStringSet("viewed", viewed().toMutableSet().also { it.removeAll(paths.toSet()) }).apply()
     fun resetViewed() = prefs.edit().remove("viewed").apply()
 

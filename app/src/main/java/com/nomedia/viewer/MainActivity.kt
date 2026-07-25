@@ -21,6 +21,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -97,6 +98,8 @@ class MainActivity : ComponentActivity() {
                     TabItem("收藏", Icons.Default.Favorite, Icons.Outlined.FavoriteBorder),
                     TabItem("设置", Icons.Default.Settings, Icons.Outlined.Settings)
                 )
+                var readSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
+
                 Box {
                     Scaffold(
                     containerColor = DarkBackground,
@@ -171,15 +174,29 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             2 -> {
-                                val readAlbums = state.albums.filter { album -> album.imagePaths.any { it in state.viewed } }
-                                FolderBrowserScreen(
-                                    albums = readAlbums,
-                                    viewed = state.viewed,
-                                    loading = state.loading,
-                                    message = state.message ?: "还没有已浏览文件夹",
-                                    onAlbumClick = { vm.browseAlbum(it) },
-                                    onAlbumLongClick = { vm.unmarkAlbumRead(it) }
-                                )
+                                val readAlbums = state.albums
+                                    .filter { album -> album.imagePaths.any { it in state.viewed } }
+                                    .sortedByDescending { vm.albumViewedAt(it.path) }
+                                Column(Modifier.fillMaxSize()) {
+                                    if (readSelection.isNotEmpty()) {
+                                        Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Text("已选 ${readSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { readSelection = readAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.restoreAlbumsUnread(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("未浏览") }
+                                            Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
+                                        }
+                                    }
+                                    FolderBrowserScreen(
+                                        albums = readAlbums,
+                                        viewed = state.viewed,
+                                        loading = state.loading,
+                                        message = state.message ?: "还没有已浏览文件夹",
+                                        selectedPaths = readSelection,
+                                        selectionMode = readSelection.isNotEmpty(),
+                                        onAlbumClick = { vm.browseAlbum(it) },
+                                        onAlbumLongClick = { path -> readSelection = if (path in readSelection) readSelection - path else readSelection + path }
+                                    )
+                                }
                             }
                             3 -> FavoritesScreen(
                                 favorites = vm.favoriteImages(),
