@@ -145,11 +145,6 @@ fun SettingsScreen(
                 Button(shape = RoundedCornerShape(8.dp), onClick = { netType = com.nomedia.viewer.NetworkFolderType.WEBDAV; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加WebDAV") }
                 Button(shape = RoundedCornerShape(8.dp), onClick = { netType = com.nomedia.viewer.NetworkFolderType.SMB; showNetworkDialog = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("添加Samba") }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(shape = RoundedCornerShape(8.dp), onClick = onRefreshNetwork, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("刷新网络") }
-                Button(shape = RoundedCornerShape(8.dp), onClick = onClearNetworkRecovery, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("重置网络") }
-            }
-            Spacer(Modifier.height(8.dp))
             networkFolders.forEach { nf ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)), shape = RoundedCornerShape(10.dp)) {
                     Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -189,21 +184,6 @@ fun SettingsScreen(
             }
         }
         Spacer(Modifier.height(16.dp))
-        Section("滑动速度") {
-            Text("浏览页滑动速度：${String.format("%.1f", scrollSpeed)}x", color = Color.White, fontSize = 14.sp)
-            Slider(
-                value = scrollSpeed,
-                onValueChange = onScrollSpeed,
-                valueRange = 1f..3f,
-                colors = SliderDefaults.colors(
-                    thumbColor = Color(0xFFFFB000),
-                    activeTrackColor = Color(0xFFFFB000),
-                    inactiveTrackColor = Color(0xFF444444)
-                )
-            )
-            Text("正常为1x，最高3x；只影响浏览界面上下滑动速度", color = Color(0xFFB0B0B0), fontSize = 12.sp)
-        }
-        Spacer(Modifier.height(16.dp))
         Section("收藏布局") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (1..6).forEach { n ->
@@ -226,6 +206,21 @@ fun SettingsScreen(
                     )
                 }
             }
+        }
+        Spacer(Modifier.height(16.dp))
+        Section("滑动速度") {
+            Text("浏览页滑动速度：${String.format("%.1f", scrollSpeed)}x", color = Color.White, fontSize = 14.sp)
+            Slider(
+                value = scrollSpeed,
+                onValueChange = onScrollSpeed,
+                valueRange = 1f..3f,
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFFFFB000),
+                    activeTrackColor = Color(0xFFFFB000),
+                    inactiveTrackColor = Color(0xFF444444)
+                )
+            )
+            Text("正常为1x，最高3x；只影响浏览界面上下滑动速度", color = Color(0xFFB0B0B0), fontSize = 12.sp)
         }
         Spacer(Modifier.height(16.dp))
         Section("收藏存储") {
