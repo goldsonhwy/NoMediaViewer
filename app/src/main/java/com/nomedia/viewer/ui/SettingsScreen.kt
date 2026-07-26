@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -110,7 +111,9 @@ fun SettingsScreen(
         )
     }
 
-    val scrollState = rememberScrollState()
+    var savedScroll by rememberSaveable { mutableIntStateOf(0) }
+    val scrollState = rememberScrollState(initial = savedScroll)
+    LaunchedEffect(scrollState) { snapshotFlow { scrollState.value }.collect { savedScroll = it } }
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(16.dp)) {
         Text("设置", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)

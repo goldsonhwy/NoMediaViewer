@@ -13,6 +13,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +46,10 @@ fun FolderBrowserScreen(
     onAlbumClick: (String) -> Unit,
     onAlbumLongClick: (String) -> Unit
 ) {
-    val gridState = rememberLazyGridState()
+    var savedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+    val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = savedIndex, initialFirstVisibleItemScrollOffset = savedOffset)
+    LaunchedEffect(gridState) { snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }.collect { (i, o) -> savedIndex = i; savedOffset = o } }
     Box(Modifier.fillMaxSize()) {
         when {
             loading -> YellowLoadingOverlay("正在加载中")

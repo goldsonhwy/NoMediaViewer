@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -97,7 +98,9 @@ private fun OneColumn(
     onScrollUp:()->Unit,
     onScrollDown:()->Unit
 ) {
-    val state = rememberLazyListState()
+    var savedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = savedIndex, initialFirstVisibleItemScrollOffset = savedOffset)
     val scope = rememberCoroutineScope()
     val speedConnection = remember(scrollSpeed) {
         object : NestedScrollConnection {
@@ -111,7 +114,15 @@ private fun OneColumn(
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
-    LaunchedEffect(images) { state.scrollToItem(0) }
+    var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
+    LaunchedEffect(images) {
+        val now = titleToken(images)
+        if (lastTitle.isNotBlank() && now != lastTitle) state.scrollToItem(0)
+        lastTitle = now
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }.collect { (i, o) -> savedIndex = i; savedOffset = o }
+    }
     LaunchedEffect(state, images) {
         snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { idx ->
             if (idx in images.indices) onViewed(images[idx].path)
@@ -168,7 +179,9 @@ private fun MultiColumn(
     onScrollUp:()->Unit,
     onScrollDown:()->Unit
 ) {
-    val state = rememberLazyGridState()
+    var savedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+    val state = rememberLazyGridState(initialFirstVisibleItemIndex = savedIndex, initialFirstVisibleItemScrollOffset = savedOffset)
     val scope = rememberCoroutineScope()
     val speedConnection = remember(scrollSpeed) {
         object : NestedScrollConnection {
@@ -182,7 +195,13 @@ private fun MultiColumn(
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
-    LaunchedEffect(images, columns) { state.scrollToItem(0) }
+    var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
+    LaunchedEffect(images, columns) {
+        val now = titleToken(images)
+        if (lastTitle.isNotBlank() && now != lastTitle) state.scrollToItem(0)
+        lastTitle = now
+    }
+    LaunchedEffect(state) { snapshotFlow { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }.collect { (i, o) -> savedIndex = i; savedOffset = o } }
     LaunchedEffect(state, images) {
         snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged().collect { first ->
             val start = (first / columns) * columns
@@ -236,6 +255,8 @@ private fun landscapeSpan(columns: Int): Int = when {
     columns <= 5 -> 2
     else -> 3
 }.coerceAtMost(columns)
+
+private fun titleToken(images: List<ImageFile>): String = images.firstOrNull()?.path.orEmpty() + "|" + images.size + "|" + images.lastOrNull()?.path.orEmpty()
 
 @Composable
 private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {

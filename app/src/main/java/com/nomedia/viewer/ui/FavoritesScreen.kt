@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +42,10 @@ fun FavoritesScreen(
     onDeleteSelected: (Set<String>) -> Unit
 ) {
     var selection by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val state = rememberLazyGridState()
+    var savedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+    val state = rememberLazyGridState(initialFirstVisibleItemIndex = savedIndex, initialFirstVisibleItemScrollOffset = savedOffset)
+    LaunchedEffect(state) { snapshotFlow { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }.collect { (i, o) -> savedIndex = i; savedOffset = o } }
     if (favorites.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
