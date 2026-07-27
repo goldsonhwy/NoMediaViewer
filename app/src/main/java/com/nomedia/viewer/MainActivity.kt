@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
                                 onScrollDown = { vm.setBottomVisible(true) }
                             )
                             1 -> {
-                                val unreadAlbums = state.albums.filter { album -> album.imagePaths.none { it in state.viewed } }
+                                val unreadAlbums = state.albums.filter { album -> if (album.imagePaths.isEmpty()) vm.albumViewedAt(album.path) == 0L else album.imagePaths.none { it in state.viewed } }
                                 Column(Modifier.fillMaxSize()) {
                                     if (unreadSelection.isNotEmpty()) {
                                         Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
                             }
                             2 -> {
                                 val readAlbums = state.albums
-                                    .filter { album -> album.imagePaths.any { it in state.viewed } }
+                                    .filter { album -> if (album.imagePaths.isEmpty()) vm.albumViewedAt(album.path) > 0L else album.imagePaths.any { it in state.viewed } }
                                     .sortedByDescending { vm.albumViewedAt(it.path) }
                                 Column(Modifier.fillMaxSize()) {
                                     if (readSelection.isNotEmpty()) {

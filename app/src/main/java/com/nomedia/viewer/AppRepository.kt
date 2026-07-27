@@ -8,6 +8,7 @@ import java.io.File
 class AppRepository(private val context: Context) {
     private val prefs = context.getSharedPreferences("setu_pinjian_v10", Context.MODE_PRIVATE)
     private val indexStore = ImageIndexStore(context)
+    private val indexDb = ImageIndexDb(context)
     private var activeIndex: MutableMap<String, ImageIndexStore.Entry>? = null
     private val imageExt = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
 
@@ -36,7 +37,8 @@ class AppRepository(private val context: Context) {
 
     fun enabledRootPaths(): List<String> = roots().filter { it.enabled }.map { it.path }
 
-    fun cachedAlbums(): List<FolderAlbum> = albumsFromImages(indexStore.load().values.map { it.toImageFile() })
+    fun cachedAlbums(): List<FolderAlbum> = indexDb.loadFolders().ifEmpty { albumsFromImages(indexStore.load().values.map { it.toImageFile() }) }
+    fun cachedImages(paths: List<String>): List<ImageFile> = indexDb.loadImages(paths).ifEmpty { scanImages(paths) }
 
     fun networkFolders(): List<NetworkFolder> = (prefs.getStringSet("network_roots", emptySet()) ?: emptySet()).mapNotNull { raw ->
         val p = raw.split("\u001f", limit = 7)
@@ -75,6 +77,7 @@ class AppRepository(private val context: Context) {
             cachedPaths.forEach { p -> images.add(toImageFile(File(p))) }
         }
         indexStore.save(images.map { ImageIndexStore.Entry(it.path, it.parentPath, it.name, it.size, it.lastModified, it.width, it.height) })
+        indexDb.replaceAll(images)
         activeIndex = null
         return albumsFromImages(images)
     }
