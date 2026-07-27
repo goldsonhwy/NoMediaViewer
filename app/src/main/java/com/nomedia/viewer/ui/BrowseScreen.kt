@@ -303,7 +303,7 @@ private fun AutoBrowseControls(running: Boolean, speed: Float, showSlider: Boole
                     Slider(
                         value = speed,
                         onValueChange = onSpeed,
-                        valueRange = 1f..38f,
+                        valueRange = 1f..20f,
                         modifier = Modifier.weight(1f),
                         colors = SliderDefaults.colors(thumbColor = Color(0xFFFFB000), activeTrackColor = Color(0xFFFFB000), inactiveTrackColor = Color(0xFF444444))
                     )

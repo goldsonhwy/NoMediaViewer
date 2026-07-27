@@ -22,7 +22,6 @@ fun RightScrollProgressBar(progress: Float, visibleFraction: Float = 0.12f, modi
     BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
         val barHeight = maxHeight * vf
         val y = (maxHeight - barHeight) * p
-        Box(Modifier.width(1.dp).fillMaxHeight().background(Color(0x11000000)).align(Alignment.CenterStart))
         Box(
             Modifier
                 .offset(y = y)
