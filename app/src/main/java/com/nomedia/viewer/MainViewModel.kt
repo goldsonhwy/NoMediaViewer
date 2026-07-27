@@ -28,6 +28,7 @@ data class AppState(
     val favoriteColumns: Int = 2,
     val scrollSpeed: Float = 1f,
     val autoBrowseSpeed: Float = 8f,
+    val autoBrowseRunning: Boolean = false,
     val bottomBarVisible: Boolean = true,
     val loading: Boolean = false,
     val message: String? = null,
@@ -227,6 +228,7 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun setFavoriteColumns(c: Int) { repo.setFavoriteColumns(c); _state.value = _state.value.copy(favoriteColumns = repo.favoriteColumns()) }
     fun setScrollSpeed(v: Float) { repo.setScrollSpeed(v); _state.value = _state.value.copy(scrollSpeed = repo.scrollSpeed()) }
     fun setAutoBrowseSpeed(v: Float) { repo.setAutoBrowseSpeed(v); _state.value = _state.value.copy(autoBrowseSpeed = repo.autoBrowseSpeed()) }
+    fun toggleAutoBrowse() { _state.value = _state.value.copy(autoBrowseRunning = !_state.value.autoBrowseRunning) }
     fun setBottomVisible(v: Boolean) { if (_state.value.bottomBarVisible != v) _state.value = _state.value.copy(bottomBarVisible = v) }
     fun saveStorage(c: StorageConfig) { repo.saveStorage(c); _state.value = _state.value.copy(storageConfig = c, message = "已保存设置") }
     fun testWebDav(url: String, user: String, pass: String, cb: (String) -> Unit) = viewModelScope.launch { cb(storage.testWebDavAuto(url, user, pass)) }
