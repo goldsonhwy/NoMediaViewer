@@ -146,6 +146,8 @@ class MainActivity : ComponentActivity() {
                                 columns = state.columns,
                                 onColumnsChange = { vm.setColumns(it) },
                                 scrollSpeed = state.scrollSpeed,
+                                autoBrowseSpeed = state.autoBrowseSpeed,
+                                onAutoBrowseSpeed = { vm.setAutoBrowseSpeed(it) },
                                 isFavorite = { vm.isFavorite(it) },
                                 isRead = { it in state.viewed },
                                 onFavorite = { vm.toggleFavorite(it) },

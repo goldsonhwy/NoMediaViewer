@@ -49,6 +49,8 @@ fun BrowseScreen(
     columns: Int,
     onColumnsChange: (Int) -> Unit,
     scrollSpeed: Float,
+    autoBrowseSpeed: Float,
+    onAutoBrowseSpeed: (Float) -> Unit,
     isFavorite: (String) -> Boolean,
     isRead: (String) -> Boolean,
     onFavorite: (String) -> Unit,
@@ -80,8 +82,8 @@ fun BrowseScreen(
                 }
             }
     ) {
-        if (columns > 1) MultiColumn(images, columns, scrollSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
-        else OneColumn(images, scrollSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        if (columns > 1) MultiColumn(images, columns, scrollSpeed, autoBrowseSpeed, onAutoBrowseSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        else OneColumn(images, scrollSpeed, autoBrowseSpeed, onAutoBrowseSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
     }
 }
 
@@ -89,6 +91,8 @@ fun BrowseScreen(
 private fun OneColumn(
     images: List<ImageFile>,
     scrollSpeed: Float,
+    autoBrowseSpeed: Float,
+    onAutoBrowseSpeed: (Float) -> Unit,
     isFavorite: (String)->Boolean,
     isRead: (String)->Boolean,
     onFavorite:(String)->Unit,
@@ -115,10 +119,10 @@ private fun OneColumn(
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var autoBrowse by rememberSaveable { mutableStateOf(false) }
-    var autoSpeed by rememberSaveable { mutableFloatStateOf(8f) }
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(autoBrowse, autoSpeed) { while (autoBrowse) { state.scrollBy(autoSpeed); delay(16) } }
-    LaunchedEffect(showAutoSlider) { if (showAutoSlider) { delay(5000); showAutoSlider = false } }
+    var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(autoBrowse, autoBrowseSpeed) { while (autoBrowse) { state.scrollBy(autoBrowseSpeed); delay(16) } }
+    LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
     LaunchedEffect(images) {
@@ -169,10 +173,10 @@ private fun OneColumn(
         RightScrollProgressBar(progress, visibleFraction = (visible.toFloat() / images.size.coerceAtLeast(1)).coerceAtMost(1f))
         AutoBrowseControls(
             running = autoBrowse,
-            speed = autoSpeed,
+            speed = autoBrowseSpeed,
             showSlider = showAutoSlider,
-            onToggle = { autoBrowse = !autoBrowse; showAutoSlider = true },
-            onSpeed = { autoSpeed = it; showAutoSlider = true }
+            onToggle = { autoBrowse = !autoBrowse; showAutoSlider = true; autoSliderTouched = false },
+            onSpeed = { onAutoBrowseSpeed(it); autoSliderTouched = true; showAutoSlider = true }
         )
     }
 }
@@ -182,6 +186,8 @@ private fun MultiColumn(
     images: List<ImageFile>,
     columns: Int,
     scrollSpeed: Float,
+    autoBrowseSpeed: Float,
+    onAutoBrowseSpeed: (Float) -> Unit,
     isFavorite: (String)->Boolean,
     isRead: (String)->Boolean,
     onFavorite:(String)->Unit,
@@ -208,10 +214,10 @@ private fun MultiColumn(
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var autoBrowse by rememberSaveable { mutableStateOf(false) }
-    var autoSpeed by rememberSaveable { mutableFloatStateOf(8f) }
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(autoBrowse, autoSpeed) { while (autoBrowse) { state.scrollBy(autoSpeed); delay(16) } }
-    LaunchedEffect(showAutoSlider) { if (showAutoSlider) { delay(5000); showAutoSlider = false } }
+    var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(autoBrowse, autoBrowseSpeed) { while (autoBrowse) { state.scrollBy(autoBrowseSpeed); delay(16) } }
+    LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
     LaunchedEffect(images, columns) {
@@ -266,10 +272,10 @@ private fun MultiColumn(
         RightScrollProgressBar(progress, visibleFraction = (visible.toFloat() / images.size.coerceAtLeast(1)).coerceAtMost(1f))
         AutoBrowseControls(
             running = autoBrowse,
-            speed = autoSpeed,
+            speed = autoBrowseSpeed,
             showSlider = showAutoSlider,
-            onToggle = { autoBrowse = !autoBrowse; showAutoSlider = true },
-            onSpeed = { autoSpeed = it; showAutoSlider = true }
+            onToggle = { autoBrowse = !autoBrowse; showAutoSlider = true; autoSliderTouched = false },
+            onSpeed = { onAutoBrowseSpeed(it); autoSliderTouched = true; showAutoSlider = true }
         )
     }
 }
@@ -294,7 +300,7 @@ private fun AutoBrowseControls(running: Boolean, speed: Float, showSlider: Boole
         ) { Box(contentAlignment = Alignment.Center) { Text(if (running) "Ⅱ" else "▶", color = if (running) Color.Black else Color(0xFFFFB000), fontSize = 14.sp) } }
         if (showSlider) {
             Surface(
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp).fillMaxWidth(0.72f),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 4.dp).fillMaxWidth(0.72f).height(34.dp),
                 color = Color(0xCC111111),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
             ) {

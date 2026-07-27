@@ -159,6 +159,8 @@ class AppRepository(private val context: Context) {
     fun setFavoriteColumns(v: Int) = prefs.edit().putInt("favorite_columns", v.coerceIn(1, 6)).apply()
     fun scrollSpeed(): Float = prefs.getFloat("scroll_speed", 1f).coerceIn(1f, 3f)
     fun setScrollSpeed(v: Float) = prefs.edit().putFloat("scroll_speed", v.coerceIn(1f, 3f)).apply()
+    fun autoBrowseSpeed(): Float = prefs.getFloat("auto_browse_speed", 8f).coerceIn(1f, 20f)
+    fun setAutoBrowseSpeed(v: Float) = prefs.edit().putFloat("auto_browse_speed", v.coerceIn(1f, 20f)).apply()
 
     private fun toImageFile(f: File): ImageFile {
         val cached = activeIndex?.get(f.absolutePath)
