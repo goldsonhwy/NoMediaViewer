@@ -124,7 +124,7 @@ private fun OneColumn(
     var drag by remember { mutableStateOf(Offset.Zero) }
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
     var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed) { while (autoBrowseRunning) { state.scrollBy(autoBrowseSpeed); delay(16) } }
+    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed) { while (autoBrowseRunning) { state.dispatchRawDelta(autoBrowseSpeed); delay(16) } }
     LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
@@ -220,7 +220,7 @@ private fun MultiColumn(
     var drag by remember { mutableStateOf(Offset.Zero) }
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
     var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed) { while (autoBrowseRunning) { state.scrollBy(autoBrowseSpeed); delay(16) } }
+    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed) { while (autoBrowseRunning) { state.dispatchRawDelta(autoBrowseSpeed); delay(16) } }
     LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
