@@ -32,6 +32,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
@@ -113,6 +114,11 @@ private fun OneColumn(
         }
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
+    var autoBrowse by rememberSaveable { mutableStateOf(false) }
+    var autoSpeed by rememberSaveable { mutableFloatStateOf(8f) }
+    var showAutoSlider by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(autoBrowse, autoSpeed) { while (autoBrowse) { state.scrollBy(autoSpeed); delay(16) } }
+    LaunchedEffect(showAutoSlider) { if (showAutoSlider) { delay(5000); showAutoSlider = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
     LaunchedEffect(images) {
@@ -161,6 +167,13 @@ private fun OneColumn(
         val maxIndex = (images.size - visible).coerceAtLeast(1)
         val progress = state.firstVisibleItemIndex.toFloat() / maxIndex
         RightScrollProgressBar(progress, visibleFraction = (visible.toFloat() / images.size.coerceAtLeast(1)).coerceAtMost(1f))
+        AutoBrowseControls(
+            running = autoBrowse,
+            speed = autoSpeed,
+            showSlider = showAutoSlider,
+            onToggle = { autoBrowse = !autoBrowse; showAutoSlider = true },
+            onSpeed = { autoSpeed = it; showAutoSlider = true }
+        )
     }
 }
 
@@ -194,6 +207,11 @@ private fun MultiColumn(
         }
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
+    var autoBrowse by rememberSaveable { mutableStateOf(false) }
+    var autoSpeed by rememberSaveable { mutableFloatStateOf(8f) }
+    var showAutoSlider by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(autoBrowse, autoSpeed) { while (autoBrowse) { state.scrollBy(autoSpeed); delay(16) } }
+    LaunchedEffect(showAutoSlider) { if (showAutoSlider) { delay(5000); showAutoSlider = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
     LaunchedEffect(images, columns) {
@@ -246,6 +264,13 @@ private fun MultiColumn(
         val maxIndex = (images.size - visible).coerceAtLeast(1)
         val progress = state.firstVisibleItemIndex.toFloat() / maxIndex
         RightScrollProgressBar(progress, visibleFraction = (visible.toFloat() / images.size.coerceAtLeast(1)).coerceAtMost(1f))
+        AutoBrowseControls(
+            running = autoBrowse,
+            speed = autoSpeed,
+            showSlider = showAutoSlider,
+            onToggle = { autoBrowse = !autoBrowse; showAutoSlider = true },
+            onSpeed = { autoSpeed = it; showAutoSlider = true }
+        )
     }
 }
 
@@ -257,6 +282,36 @@ private fun landscapeSpan(columns: Int): Int = when {
 }.coerceAtMost(columns)
 
 private fun titleToken(images: List<ImageFile>): String = images.firstOrNull()?.path.orEmpty() + "|" + images.size + "|" + images.lastOrNull()?.path.orEmpty()
+
+@Composable
+private fun AutoBrowseControls(running: Boolean, speed: Float, showSlider: Boolean, onToggle: () -> Unit, onSpeed: (Float) -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(34.dp),
+            color = if (running) Color(0xFFFFB000) else Color(0xAA111111),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            onClick = onToggle
+        ) { Box(contentAlignment = Alignment.Center) { Text(if (running) "Ⅱ" else "▶", color = if (running) Color.Black else Color(0xFFFFB000), fontSize = 14.sp) } }
+        if (showSlider) {
+            Surface(
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp).fillMaxWidth(0.72f),
+                color = Color(0xCC111111),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+            ) {
+                Row(Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("自动", color = Color(0xFFFFB000), fontSize = 11.sp)
+                    Slider(
+                        value = speed,
+                        onValueChange = onSpeed,
+                        valueRange = 1f..38f,
+                        modifier = Modifier.weight(1f),
+                        colors = SliderDefaults.colors(thumbColor = Color(0xFFFFB000), activeTrackColor = Color(0xFFFFB000), inactiveTrackColor = Color(0xFF444444))
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {
