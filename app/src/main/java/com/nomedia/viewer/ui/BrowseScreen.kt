@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -66,7 +68,7 @@ fun BrowseScreen(
     onScrollDown: () -> Unit,
     onShareSelected: (Set<String>) -> Unit,
     onDeleteSelected: (Set<String>) -> Unit,
-    onAutoReachedEnd: () -> Unit
+    onAutoAppendNext: () -> Unit
 ) {
     if (images.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) { Text("请先从文件夹页选择一个相册", color = Color(0xFF888888)) }
@@ -90,8 +92,8 @@ fun BrowseScreen(
                 }
             }
     ) {
-        if (columns > 1) MultiColumn(images, columns, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, onAutoReachedEnd, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
-        else OneColumn(images, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, onAutoReachedEnd, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        if (columns > 1) MultiColumn(images, columns, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, onAutoAppendNext, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        else OneColumn(images, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, onAutoAppendNext, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
         if (selection.isNotEmpty()) {
             Row(Modifier.fillMaxWidth().align(Alignment.TopCenter).background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("已选 ${selection.size}", color = Color.White, modifier = Modifier.weight(1f))
@@ -111,7 +113,7 @@ private fun OneColumn(
     autoBrowseRunning: Boolean,
     onToggleAutoBrowse: () -> Unit,
     onAutoBrowseSpeed: (Float) -> Unit,
-    onAutoReachedEnd: () -> Unit,
+    onAutoAppendNext: () -> Unit,
     selection: Set<String>,
     onSelection: (Set<String>) -> Unit,
     isFavorite: (String)->Boolean,
@@ -143,7 +145,7 @@ private fun OneColumn(
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
     var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
     var autoEndTriggered by remember(images) { mutableStateOf(false) }
-    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed, userHolding) { while (autoBrowseRunning) { if (!userHolding) { val before = state.firstVisibleItemIndex; state.dispatchRawDelta(autoBrowseSpeed); val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1); if (!autoEndTriggered && before >= (images.size - visible).coerceAtLeast(0)) { autoEndTriggered = true; onAutoReachedEnd() } }; delay(16) } }
+    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed, userHolding) { while (autoBrowseRunning) { if (!userHolding) { val before = state.firstVisibleItemIndex; state.dispatchRawDelta(autoBrowseSpeed); val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1); if (!autoEndTriggered && before >= (images.size - visible).coerceAtLeast(0)) { autoEndTriggered = true; onAutoAppendNext() } }; delay(16) } }
     LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
@@ -167,6 +169,14 @@ private fun OneColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        userHolding = true
+                        do { val event = awaitPointerEvent() } while (event.changes.any { it.pressed })
+                        userHolding = false
+                    }
+                }
                 .nestedScroll(speedConnection)
                 .pointerInput(images, scrollSpeed) {
                 detectDragGestures(
@@ -213,7 +223,7 @@ private fun MultiColumn(
     autoBrowseRunning: Boolean,
     onToggleAutoBrowse: () -> Unit,
     onAutoBrowseSpeed: (Float) -> Unit,
-    onAutoReachedEnd: () -> Unit,
+    onAutoAppendNext: () -> Unit,
     selection: Set<String>,
     onSelection: (Set<String>) -> Unit,
     isFavorite: (String)->Boolean,
@@ -245,7 +255,7 @@ private fun MultiColumn(
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
     var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
     var autoEndTriggered by remember(images) { mutableStateOf(false) }
-    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed, userHolding) { while (autoBrowseRunning) { if (!userHolding) { val before = state.firstVisibleItemIndex; state.dispatchRawDelta(autoBrowseSpeed); val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1); if (!autoEndTriggered && before >= (images.size - visible).coerceAtLeast(0)) { autoEndTriggered = true; onAutoReachedEnd() } }; delay(16) } }
+    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed, userHolding) { while (autoBrowseRunning) { if (!userHolding) { val before = state.firstVisibleItemIndex; state.dispatchRawDelta(autoBrowseSpeed); val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1); if (!autoEndTriggered && before >= (images.size - visible).coerceAtLeast(0)) { autoEndTriggered = true; onAutoAppendNext() } }; delay(16) } }
     LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
@@ -268,6 +278,14 @@ private fun MultiColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+                           .pointerInput(Unit) {
+                               awaitEachGesture {
+                                   awaitFirstDown(requireUnconsumed = false)
+                                   userHolding = true
+                                   do { val event = awaitPointerEvent() } while (event.changes.any { it.pressed })
+                                   userHolding = false
+                               }
+                           }
                            .nestedScroll(speedConnection)
                            .pointerInput(images, columns, scrollSpeed) {
                 detectDragGestures(

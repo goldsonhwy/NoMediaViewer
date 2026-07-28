@@ -182,6 +182,26 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun goNextAlbumIfPossible() = goRelativeAlbum(1, show = true)
     fun goPreviousAlbumIfPossible() = goRelativeAlbum(-1, show = true)
     fun autoAdvanceToNextAlbum(): Boolean = goRelativeAlbum(1, show = false)
+    fun autoAppendNextAlbum() {
+        val s = _state.value
+        if (s.browseSourcePaths.isEmpty() || s.browseSourceIndex !in s.browseSourcePaths.indices) return
+        val nextIndex = s.browseSourceIndex + 1
+        if (nextIndex !in s.browseSourcePaths.indices) return
+        val path = s.browseSourcePaths[nextIndex]
+        viewModelScope.launch {
+            val imgs = withContext(Dispatchers.IO) { repo.cachedImages(listOf(path)) }
+            _state.value = _state.value.copy(
+                images = (_state.value.images + imgs).distinctBy { it.path },
+                browseSourceIndex = nextIndex,
+                currentAlbumPath = path,
+                browsingTitle = _state.value.browsingTitle,
+                viewed = repo.viewed(),
+                favorites = repo.favorites()
+            )
+            val preload = nextIndex + 1
+            if (preload in s.browseSourcePaths.indices) launch(Dispatchers.IO) { repo.cachedImages(listOf(s.browseSourcePaths[preload])) }
+        }
+    }
 
     private fun goRelativeAlbum(delta: Int, show: Boolean): Boolean {
         val s = _state.value

@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
                                 onScrollDown = { vm.setBottomVisible(true) },
                                 onShareSelected = { shareImages(it) },
                                 onDeleteSelected = { vm.deleteBrowseImages(it) },
-                                onAutoReachedEnd = { vm.autoAdvanceToNextAlbum() }
+                                onAutoAppendNext = { vm.autoAppendNextAlbum() }
                             )
                             1 -> {
                                 val unreadAlbums = state.albums.filter { album -> if (album.imagePaths.isEmpty()) vm.albumViewedAt(album.path) == 0L else album.imagePaths.none { it in state.viewed } }
