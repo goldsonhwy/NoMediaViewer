@@ -118,10 +118,6 @@ fun SettingsScreen(
     Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(16.dp)) {
         Text("设置", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        Button(shape = RoundedCornerShape(8.dp), onClick = onExportLogs, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
-            Icon(Icons.Default.BugReport, null); Spacer(Modifier.width(8.dp)); Text("导出日志/崩溃信息")
-        }
-        Spacer(Modifier.height(16.dp))
         Section("扫描根目录") {
             Button(shape = RoundedCornerShape(8.dp), onClick = { addRoot.launch(null) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
                 Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text("添加手机文件夹")
@@ -254,6 +250,9 @@ fun SettingsScreen(
                 Spacer(Modifier.height(10.dp))
                 Button(shape = RoundedCornerShape(8.dp), onClick = { onSaveStorage(cfg); test = "✅ 已保存" }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("保存存储设置") }
             }
+        }
+        Button(shape = RoundedCornerShape(8.dp), onClick = onExportLogs, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) {
+            Icon(Icons.Default.BugReport, null); Spacer(Modifier.width(8.dp)); Text("导出日志/崩溃信息")
         }
         Spacer(Modifier.height(50.dp))
     }

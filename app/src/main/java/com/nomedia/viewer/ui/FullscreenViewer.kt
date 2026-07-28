@@ -1,8 +1,17 @@
 package com.nomedia.viewer.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -12,7 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -36,20 +44,28 @@ fun FullscreenViewer(
 ) {
     var scale by remember(image.path) { mutableFloatStateOf(1f) }
     var drag by remember { mutableStateOf(Offset.Zero) }
-    var shownPath by remember { mutableStateOf(image.path) }
+    var direction by remember { mutableIntStateOf(1) }
     val ctx = LocalContext.current
+
+    fun goNextAnimated() { direction = 1; scale = 1f; onNext() }
+    fun goPrevAnimated() { direction = -1; scale = 1f; onPrevious() }
 
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .pointerInput(image.path, scale) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    scale = (scale * zoom).coerceIn(1f, 5f)
+                }
+            }
             .pointerInput(image.path) {
                 detectDragGestures(
                     onDragStart = { drag = Offset.Zero },
                     onDrag = { change, amount -> drag += amount; change.consume() },
                     onDragEnd = {
                         if (abs(drag.x) > 120f && abs(drag.x) > abs(drag.y)) {
-                            if (drag.x < 0f) onNext() else onPrevious()
+                            if (drag.x < 0f) goNextAnimated() else goPrevAnimated()
                         }
                         drag = Offset.Zero
                     },
@@ -60,38 +76,37 @@ fun FullscreenViewer(
                 detectTapGestures(
                     onTap = { pos ->
                         when {
-                            pos.x > size.width * 0.82f -> onNext()
-                            pos.x < size.width * 0.18f -> onPrevious()
+                            pos.x > size.width * 0.82f -> goNextAnimated()
+                            pos.x < size.width * 0.18f -> goPrevAnimated()
                             else -> onToggleFavorite()
                         }
-                    },
-                    onDoubleTap = { scale = if (scale > 1f) 1f else 2.5f }
+                    }
                 )
             }
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(ctx)
-                .data("file://$shownPath")
-                .memoryCacheKey(shownPath)
-                .diskCacheKey(shownPath)
-                .crossfade(false)
-                .build(),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = scale, scaleY = scale),
-            contentScale = ContentScale.Fit
-        )
-        if (shownPath != image.path) {
+        AnimatedContent(
+            targetState = image.path,
+            transitionSpec = {
+                if (direction >= 0) {
+                    (slideInHorizontally(animationSpec = tween(220)) { it } + fadeIn(tween(160))) togetherWith
+                        (slideOutHorizontally(animationSpec = tween(220)) { -it } + fadeOut(tween(160)))
+                } else {
+                    (slideInHorizontally(animationSpec = tween(220)) { -it } + fadeIn(tween(160))) togetherWith
+                        (slideOutHorizontally(animationSpec = tween(220)) { it } + fadeOut(tween(160)))
+                }.using(SizeTransform(clip = false))
+            },
+            label = "fullscreen-slide"
+        ) { path ->
             AsyncImage(
                 model = ImageRequest.Builder(ctx)
-                    .data("file://${image.path}")
-                    .memoryCacheKey(image.path)
-                    .diskCacheKey(image.path)
+                    .data("file://$path")
+                    .memoryCacheKey(path)
+                    .diskCacheKey(path)
                     .crossfade(false)
                     .build(),
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize().alpha(0.01f),
-                contentScale = ContentScale.Fit,
-                onSuccess = { shownPath = image.path }
+                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = scale, scaleY = scale),
+                contentScale = ContentScale.Fit
             )
         }
         IconButton(

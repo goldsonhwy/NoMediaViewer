@@ -62,6 +62,7 @@ fun FavoritesScreen(
             Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("已选 ${selection.size}", color = Color.White, modifier = Modifier.weight(1f))
                 Button(shape = RoundedCornerShape(8.dp), onClick = { selection = favorites.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
+                Button(shape = RoundedCornerShape(8.dp), onClick = { selection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("取消") }
                 Button(shape = RoundedCornerShape(8.dp), onClick = { onUnfavoriteSelected(selection); selection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("取消收藏") }
                 Button(shape = RoundedCornerShape(8.dp), onClick = { onDeleteSelected(selection); selection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
             }
