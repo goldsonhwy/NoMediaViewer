@@ -36,7 +36,9 @@ data class AppState(
     val storageConfig: StorageConfig = StorageConfig(),
     val fullscreenImage: ImageFile? = null,
     val fullscreenSource: List<ImageFile> = emptyList(),
-    val browseReturnTab: Int = 1
+    val browseReturnTab: Int = 1,
+    val browseSourcePaths: List<String> = emptyList(),
+    val browseSourceIndex: Int = -1
 )
 
 class MainViewModel(private val repo: AppRepository, private val storage: StorageManager, private val network: NetworkFolderManager) : ViewModel() {
@@ -125,13 +127,14 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     }
 
     fun toggleAlbum(path: String) { markAlbumRead(path) }
-    fun browseAlbum(path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, _state.value.currentTab.coerceIn(1, 4))
-    fun browseAlbumFrom(tab: Int, path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, tab)
+    fun browseAlbum(path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, _state.value.currentTab.coerceIn(1, 4), emptyList(), -1)
+    fun browseAlbumFrom(tab: Int, path: String) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, tab, emptyList(), -1)
+    fun browseAlbumFromList(tab: Int, path: String, sourcePaths: List<String>) = browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, tab, sourcePaths, sourcePaths.indexOf(path))
     fun browseSelectedAlbums() { /* v0.15: 合并浏览已取消 */ }
     fun browseMergedAlbums(paths: Set<String>) {
         if (paths.isEmpty()) return
         val names = _state.value.albums.filter { it.path in paths }.map { it.name }
-        browsePaths(paths.toList(), if (names.size <= 2) names.joinToString(" + ") else "合并浏览 ${names.size} 个相册", null, _state.value.currentTab.coerceIn(1, 2))
+        browsePaths(paths.toList(), if (names.size <= 2) names.joinToString(" + ") else "合并浏览 ${names.size} 个相册", null, _state.value.currentTab.coerceIn(1, 2), emptyList(), -1)
     }
 
     fun markAlbumRead(path: String) {
@@ -164,11 +167,11 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         scanAlbums(true)
     }
 
-    private fun browsePaths(paths: List<String>, title: String, albumPath: String?, returnTab: Int) = viewModelScope.launch {
+    private fun browsePaths(paths: List<String>, title: String, albumPath: String?, returnTab: Int, sourcePaths: List<String>, sourceIndex: Int) = viewModelScope.launch {
         _state.value = _state.value.copy(loading = true, message = null, browseReturnTab = returnTab)
         delay(120)
         val imgs = withContext(Dispatchers.IO) { repo.cachedImages(paths) }
-        _state.value = _state.value.copy(currentTab = 0, browsingTitle = title, currentAlbumPath = albumPath, images = imgs, viewed = repo.viewed(), favorites = repo.favorites(), loading = false, bottomBarVisible = true, browseReturnTab = returnTab, message = if (imgs.isEmpty()) "该文件夹没有图片" else null)
+        _state.value = _state.value.copy(currentTab = 0, browsingTitle = title, currentAlbumPath = albumPath, images = imgs, viewed = repo.viewed(), favorites = repo.favorites(), loading = false, bottomBarVisible = true, browseReturnTab = returnTab, browseSourcePaths = sourcePaths, browseSourceIndex = sourceIndex, message = if (imgs.isEmpty()) "该文件夹没有图片" else null)
     }
 
     fun markRead(path: String) { repo.markViewed(path); _state.value = _state.value.copy(viewed = repo.viewed()) }
@@ -178,8 +181,20 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
     fun goPreviousAlbumIfPossible() = goRelativeAlbum(-1)
 
     private fun goRelativeAlbum(delta: Int) {
-        val current = _state.value.currentAlbumPath ?: return
-        val albums = _state.value.albums
+        val s = _state.value
+        if (s.browseSourcePaths.isNotEmpty() && s.browseSourceIndex in s.browseSourcePaths.indices) {
+            val target = s.browseSourceIndex + delta
+            if (target in s.browseSourcePaths.indices) {
+                val path = s.browseSourcePaths[target]
+                showNotice(if (delta > 0) "已进入下一个文件夹：${java.io.File(path).name}" else "已进入上一个文件夹：${java.io.File(path).name}")
+                browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, s.browseReturnTab, s.browseSourcePaths, target)
+            } else {
+                showNotice(if (delta > 0) "已经是最后一个文件夹" else "已经是第一个文件夹")
+            }
+            return
+        }
+        val current = s.currentAlbumPath ?: return
+        val albums = s.albums
         val idx = albums.indexOfFirst { it.path == current }
         val target = idx + delta
         if (idx >= 0 && target in albums.indices) {

@@ -184,7 +184,7 @@ class MainActivity : ComponentActivity() {
                                         message = state.message ?: "没有未浏览文件夹",
                                         selectedPaths = unreadSelection,
                                         selectionMode = unreadSelection.isNotEmpty(),
-                                        onAlbumClick = { vm.browseAlbumFrom(1, it) },
+                                        onAlbumClick = { vm.browseAlbumFromList(1, it, unreadAlbums.map { a -> a.path }) },
                                         onAlbumLongClick = { path -> unreadSelection = if (path in unreadSelection) unreadSelection - path else unreadSelection + path }
                                     )
                                 }
@@ -210,7 +210,7 @@ class MainActivity : ComponentActivity() {
                                         message = state.message ?: "还没有已浏览文件夹",
                                         selectedPaths = readSelection,
                                         selectionMode = readSelection.isNotEmpty(),
-                                        onAlbumClick = { vm.browseAlbumFrom(2, it) },
+                                        onAlbumClick = { vm.browseAlbumFromList(2, it, readAlbums.map { a -> a.path }) },
                                         onAlbumLongClick = { path -> readSelection = if (path in readSelection) readSelection - path else readSelection + path }
                                     )
                                 }
