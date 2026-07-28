@@ -13,7 +13,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -27,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -47,24 +47,43 @@ fun FullscreenViewer(
     onDismiss: () -> Unit
 ) {
     var scale by remember(image.path) { mutableFloatStateOf(1f) }
+    var imageOffset by remember(image.path) { mutableStateOf(Offset.Zero) }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var direction by remember { mutableIntStateOf(1) }
     var animateSwitch by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
-    fun goNextAnimated() { animateSwitch = true; direction = 1; scale = 1f; scope.launch { delay(16); onNext() } }
-    fun goPrevAnimated() { animateSwitch = true; direction = -1; scale = 1f; scope.launch { delay(16); onPrevious() } }
-    fun goNextDirect() { animateSwitch = false; scale = 1f; onNext() }
-    fun goPrevDirect() { animateSwitch = false; scale = 1f; onPrevious() }
+    fun goNextAnimated() { animateSwitch = true; direction = 1; scale = 1f; imageOffset = Offset.Zero; scope.launch { delay(16); onNext() } }
+    fun goPrevAnimated() { animateSwitch = true; direction = -1; scale = 1f; imageOffset = Offset.Zero; scope.launch { delay(16); onPrevious() } }
+    fun goNextDirect() { animateSwitch = false; scale = 1f; imageOffset = Offset.Zero; onNext() }
+    fun goPrevDirect() { animateSwitch = false; scale = 1f; imageOffset = Offset.Zero; onPrevious() }
 
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(image.path, scale) {
-                detectTransformGestures { _, _, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(1f, 5f)
+            .pointerInput(image.path) {
+                awaitEachGesture {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.isEmpty()) break
+                        if (pressed.size >= 2) {
+                            val a = pressed[0]
+                            val b = pressed[1]
+                            val currentCentroid = Offset((a.position.x + b.position.x) / 2f, (a.position.y + b.position.y) / 2f)
+                            val previousCentroid = Offset((a.previousPosition.x + b.previousPosition.x) / 2f, (a.previousPosition.y + b.previousPosition.y) / 2f)
+                            val pan = currentCentroid - previousCentroid
+                            val currentDistance = (a.position - b.position).getDistance()
+                            val previousDistance = (a.previousPosition - b.previousPosition).getDistance().coerceAtLeast(1f)
+                            val zoom = currentDistance / previousDistance
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            imageOffset = if (scale <= 1.02f) Offset.Zero else imageOffset + pan
+                            if (scale <= 1.02f) scale = 1f
+                            pressed.forEach { it.consume() }
+                        }
+                    }
                 }
             }
             .pointerInput(image.path) {
@@ -115,7 +134,7 @@ fun FullscreenViewer(
                     .crossfade(false)
                     .build(),
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = scale, scaleY = scale),
+                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = scale, scaleY = scale, translationX = imageOffset.x, translationY = imageOffset.y),
                 contentScale = ContentScale.Fit
             )
         }
