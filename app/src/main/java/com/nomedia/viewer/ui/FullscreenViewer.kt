@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -47,11 +49,14 @@ fun FullscreenViewer(
     var scale by remember(image.path) { mutableFloatStateOf(1f) }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var direction by remember { mutableIntStateOf(1) }
+    var animateSwitch by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
-    fun goNextAnimated() { direction = 1; scale = 1f; scope.launch { delay(16); onNext() } }
-    fun goPrevAnimated() { direction = -1; scale = 1f; scope.launch { delay(16); onPrevious() } }
+    fun goNextAnimated() { animateSwitch = true; direction = 1; scale = 1f; scope.launch { delay(16); onNext() } }
+    fun goPrevAnimated() { animateSwitch = true; direction = -1; scale = 1f; scope.launch { delay(16); onPrevious() } }
+    fun goNextDirect() { animateSwitch = false; scale = 1f; onNext() }
+    fun goPrevDirect() { animateSwitch = false; scale = 1f; onPrevious() }
 
     Box(
         Modifier
@@ -79,8 +84,8 @@ fun FullscreenViewer(
                 detectTapGestures(
                     onTap = { pos ->
                         when {
-                            pos.x > size.width * 0.82f -> goNextAnimated()
-                            pos.x < size.width * 0.18f -> goPrevAnimated()
+                            pos.x > size.width * 0.82f -> goNextDirect()
+                            pos.x < size.width * 0.18f -> goPrevDirect()
                             else -> onToggleFavorite()
                         }
                     }
@@ -90,7 +95,9 @@ fun FullscreenViewer(
         AnimatedContent(
             targetState = image.path,
             transitionSpec = {
-                if (direction >= 0) {
+                if (!animateSwitch) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else if (direction >= 0) {
                     (slideInHorizontally(animationSpec = tween(220)) { it } + fadeIn(tween(160))) togetherWith
                         (slideOutHorizontally(animationSpec = tween(220)) { -it } + fadeOut(tween(160)))
                 } else {
