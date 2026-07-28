@@ -223,6 +223,14 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         }
         _state.value = _state.value.copy(favorites = repo.favorites(), transientNotice = "已删除收藏图片：${paths.size}张")
     }
+    fun deleteBrowseImages(paths: Set<String>) {
+        paths.forEach { p ->
+            if (p in repo.favorites()) toggleFavorite(p)
+            runCatching { java.io.File(p).delete() }
+        }
+        _state.value = _state.value.copy(images = _state.value.images.filterNot { it.path in paths }, favorites = repo.favorites(), transientNotice = "已删除图片：${paths.size}张")
+        scanAlbums(true)
+    }
     fun isFavorite(path: String): Boolean = path in repo.favorites()
     fun setColumns(c: Int) { repo.setColumns(c); _state.value = _state.value.copy(columns = repo.columns()) }
     fun setFavoriteColumns(c: Int) { repo.setFavoriteColumns(c); _state.value = _state.value.copy(favoriteColumns = repo.favoriteColumns()) }

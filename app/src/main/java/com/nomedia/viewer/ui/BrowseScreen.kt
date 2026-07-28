@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -62,13 +63,17 @@ fun BrowseScreen(
     onSwipeRight: () -> Unit,
     onBack: () -> Unit,
     onScrollUp: () -> Unit,
-    onScrollDown: () -> Unit
+    onScrollDown: () -> Unit,
+    onShareSelected: (Set<String>) -> Unit,
+    onDeleteSelected: (Set<String>) -> Unit
 ) {
     if (images.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) { Text("请先从文件夹页选择一个相册", color = Color(0xFF888888)) }
         return
     }
     var lastZoomChange by remember { mutableLongStateOf(0L) }
+    var selection by remember { mutableStateOf<Set<String>>(emptySet()) }
+    BackHandler(enabled = selection.isNotEmpty()) { selection = emptySet() }
     Box(
         Modifier
             .fillMaxSize()
@@ -84,8 +89,16 @@ fun BrowseScreen(
                 }
             }
     ) {
-        if (columns > 1) MultiColumn(images, columns, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
-        else OneColumn(images, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        if (columns > 1) MultiColumn(images, columns, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        else OneColumn(images, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        if (selection.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth().align(Alignment.TopCenter).background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("已选 ${selection.size}", color = Color.White, modifier = Modifier.weight(1f))
+                Button(shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp), onClick = { selection = images.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
+                Button(shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp), onClick = { onShareSelected(selection); selection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("分享") }
+                Button(shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp), onClick = { onDeleteSelected(selection); selection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
+            }
+        }
     }
 }
 
@@ -97,6 +110,8 @@ private fun OneColumn(
     autoBrowseRunning: Boolean,
     onToggleAutoBrowse: () -> Unit,
     onAutoBrowseSpeed: (Float) -> Unit,
+    selection: Set<String>,
+    onSelection: (Set<String>) -> Unit,
     isFavorite: (String)->Boolean,
     isRead: (String)->Boolean,
     onFavorite:(String)->Unit,
@@ -168,7 +183,7 @@ private fun OneColumn(
             },
         verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
-        itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
+        itemsIndexed(images, key = { _, it -> it.path }) { _, img -> ImageTile(img, selection, onSelection, isFavorite, isRead, onFavorite, onOpenFull) }
     }
         val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
         val maxIndex = (images.size - visible).coerceAtLeast(1)
@@ -193,6 +208,8 @@ private fun MultiColumn(
     autoBrowseRunning: Boolean,
     onToggleAutoBrowse: () -> Unit,
     onAutoBrowseSpeed: (Float) -> Unit,
+    selection: Set<String>,
+    onSelection: (Set<String>) -> Unit,
     isFavorite: (String)->Boolean,
     isRead: (String)->Boolean,
     onFavorite:(String)->Unit,
@@ -268,7 +285,7 @@ private fun MultiColumn(
             images,
             key = { _, it -> it.path },
             span = { _, img -> if (img.width > img.height && columns > 1) GridItemSpan(landscapeSpan(columns)) else GridItemSpan(1) }
-        ) { _, img -> ImageTile(img, isFavorite, isRead, onFavorite, onOpenFull) }
+        ) { _, img -> ImageTile(img, selection, onSelection, isFavorite, isRead, onFavorite, onOpenFull) }
     }
         val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1)
         val maxIndex = (images.size - visible).coerceAtLeast(1)
@@ -324,12 +341,13 @@ private fun AutoBrowseControls(running: Boolean, speed: Float, showSlider: Boole
 }
 
 @Composable
-private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {
+private fun ImageTile(img: ImageFile, selection: Set<String>, onSelection: (Set<String>) -> Unit, isFavorite: (String)->Boolean, isRead: (String)->Boolean, onFavorite:(String)->Unit, onOpenFull:(ImageFile)->Unit) {
     val ctx = LocalContext.current
     var flash by remember(img.path) { mutableStateOf(false) }
     val flashAlpha by animateFloatAsState(if (flash) 0.28f else 0f, animationSpec = tween(180), label = "favorite-flash")
     LaunchedEffect(flash) { if (flash) { delay(160); flash = false } }
-    Box(Modifier.fillMaxWidth().background(Color(0xFF111111)).pointerInput(img.path) { detectTapGestures(onTap = { val was = isFavorite(img.path); onFavorite(img.path); if (!was) flash = true }, onDoubleTap = { onOpenFull(img) }) }) {
+    val selected = img.path in selection
+    Box(Modifier.fillMaxWidth().background(Color(0xFF111111)).pointerInput(img.path, selection) { detectTapGestures(onTap = { if (selection.isNotEmpty()) onSelection(if (selected) selection - img.path else selection + img.path) else { val was = isFavorite(img.path); onFavorite(img.path); if (!was) flash = true } }, onLongPress = { onSelection(if (selected) selection - img.path else selection + img.path) }, onDoubleTap = { if (selection.isEmpty()) onOpenFull(img) }) }) {
         AsyncImage(
             model = ImageRequest.Builder(ctx).data("file://${img.path}").crossfade(false).allowHardware(true).precision(Precision.INEXACT).build(),
             contentDescription = null,
@@ -337,6 +355,10 @@ private fun ImageTile(img: ImageFile, isFavorite: (String)->Boolean, isRead: (St
             contentScale = ContentScale.FillWidth
         )
         if (flashAlpha > 0f) Box(Modifier.matchParentSize().background(Color.White.copy(alpha = flashAlpha)))
+        if (selected) {
+            Box(Modifier.matchParentSize().background(Color(0x55FFB000)))
+            Text("✓", color = Color.Black, fontSize = 22.sp, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
+        }
         if (isFavorite(img.path)) Icon(Icons.Default.Favorite, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp), tint = Color(0xFFFF2B2B))
     }
 }

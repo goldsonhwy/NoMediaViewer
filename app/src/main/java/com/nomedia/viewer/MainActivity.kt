@@ -161,7 +161,9 @@ class MainActivity : ComponentActivity() {
                                 onSwipeRight = { vm.goPreviousAlbumIfPossible() },
                                 onBack = { vm.setTab(1) },
                                 onScrollUp = { vm.setBottomVisible(false) },
-                                onScrollDown = { vm.setBottomVisible(true) }
+                                onScrollDown = { vm.setBottomVisible(true) },
+                                onShareSelected = { shareImages(it) },
+                                onDeleteSelected = { vm.deleteBrowseImages(it) }
                             )
                             1 -> {
                                 val unreadAlbums = state.albums.filter { album -> if (album.imagePaths.isEmpty()) vm.albumViewedAt(album.path) == 0L else album.imagePaths.none { it in state.viewed } }
@@ -290,6 +292,19 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    }
+
+    private fun shareImages(paths: Set<String>) {
+        val uris = ArrayList(paths.mapNotNull { p ->
+            runCatching { FileProvider.getUriForFile(this, "${packageName}.fileprovider", java.io.File(p)) }.getOrNull()
+        })
+        if (uris.isEmpty()) return
+        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "image/*"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, "分享图片"))
     }
 
     private fun exportLogs() {
