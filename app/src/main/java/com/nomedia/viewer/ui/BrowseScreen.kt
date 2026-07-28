@@ -335,7 +335,7 @@ private fun landscapeSpan(columns: Int): Int = when {
     else -> 3
 }.coerceAtMost(columns)
 
-private fun titleToken(images: List<ImageFile>): String = images.firstOrNull()?.path.orEmpty() + "|" + images.size + "|" + images.lastOrNull()?.path.orEmpty()
+private fun titleToken(images: List<ImageFile>): String = images.firstOrNull()?.path.orEmpty()
 
 @Composable
 private fun AutoBrowseControls(running: Boolean, speed: Float, showSlider: Boolean, onToggle: () -> Unit, onSpeed: (Float) -> Unit) {
