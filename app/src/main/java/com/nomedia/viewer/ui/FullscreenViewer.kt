@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.nomedia.viewer.ImageFile
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Composable
@@ -45,10 +47,11 @@ fun FullscreenViewer(
     var scale by remember(image.path) { mutableFloatStateOf(1f) }
     var drag by remember { mutableStateOf(Offset.Zero) }
     var direction by remember { mutableIntStateOf(1) }
+    val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
-    fun goNextAnimated() { direction = 1; scale = 1f; onNext() }
-    fun goPrevAnimated() { direction = -1; scale = 1f; onPrevious() }
+    fun goNextAnimated() { direction = 1; scale = 1f; scope.launch { delay(16); onNext() } }
+    fun goPrevAnimated() { direction = -1; scale = 1f; scope.launch { delay(16); onPrevious() } }
 
     Box(
         Modifier

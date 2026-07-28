@@ -71,6 +71,8 @@ class MainActivity : ComponentActivity() {
                 val state by vm.state.collectAsState()
                 var showSplash by remember { mutableStateOf(false) }
                 var showExitDialog by remember { mutableStateOf(false) }
+                var readSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
+                var unreadSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
                 LaunchedEffect(Unit) {
                     checkPermissions()
                 }
@@ -81,9 +83,11 @@ class MainActivity : ComponentActivity() {
                 BackHandler(enabled = state.fullscreenImage == null && state.currentTab == 0) {
                     vm.setTab(state.browseReturnTab)
                 }
-                BackHandler(enabled = state.fullscreenImage == null && state.currentTab != 0) {
+                BackHandler(enabled = state.fullscreenImage == null && state.currentTab != 0 && unreadSelection.isEmpty() && readSelection.isEmpty()) {
                     showExitDialog = true
                 }
+                BackHandler(enabled = state.fullscreenImage == null && state.currentTab == 1 && unreadSelection.isNotEmpty()) { unreadSelection = emptySet() }
+                BackHandler(enabled = state.fullscreenImage == null && state.currentTab == 2 && readSelection.isNotEmpty()) { readSelection = emptySet() }
 
                 val tabs = listOf(
                     TabItem("浏览", Icons.Default.PhotoLibrary, Icons.Outlined.Image),
@@ -92,8 +96,6 @@ class MainActivity : ComponentActivity() {
                     TabItem("收藏", Icons.Default.Favorite, Icons.Outlined.FavoriteBorder),
                     TabItem("设置", Icons.Default.Settings, Icons.Outlined.Settings)
                 )
-                var readSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
-                var unreadSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
 
                 Box {
                     Scaffold(
@@ -168,7 +170,6 @@ class MainActivity : ComponentActivity() {
                                         Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Text("已选 ${unreadSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection = unreadAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
-                                            Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("取消") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { unreadSelection.forEach { vm.markAlbumRead(it) }; unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("已浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(unreadSelection); unreadSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
@@ -195,7 +196,6 @@ class MainActivity : ComponentActivity() {
                                         Row(Modifier.fillMaxWidth().background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Text("已选 ${readSelection.size}", color = Color.White, modifier = Modifier.weight(1f))
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { readSelection = readAlbums.map { it.path }.toSet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB000), contentColor = Color.Black)) { Text("全选") }
-                                            Button(shape = RoundedCornerShape(8.dp), onClick = { readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("取消") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.browseMergedAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("合并浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.restoreAlbumsUnread(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("未浏览") }
                                             Button(shape = RoundedCornerShape(8.dp), onClick = { vm.deleteAlbums(readSelection); readSelection = emptySet() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202020), contentColor = Color(0xFFFFB000))) { Text("删除") }
