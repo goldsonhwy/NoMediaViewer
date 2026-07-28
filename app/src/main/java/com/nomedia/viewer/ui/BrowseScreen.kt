@@ -65,7 +65,8 @@ fun BrowseScreen(
     onScrollUp: () -> Unit,
     onScrollDown: () -> Unit,
     onShareSelected: (Set<String>) -> Unit,
-    onDeleteSelected: (Set<String>) -> Unit
+    onDeleteSelected: (Set<String>) -> Unit,
+    onAutoReachedEnd: () -> Unit
 ) {
     if (images.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) { Text("请先从文件夹页选择一个相册", color = Color(0xFF888888)) }
@@ -89,8 +90,8 @@ fun BrowseScreen(
                 }
             }
     ) {
-        if (columns > 1) MultiColumn(images, columns, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
-        else OneColumn(images, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        if (columns > 1) MultiColumn(images, columns, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, onAutoReachedEnd, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
+        else OneColumn(images, scrollSpeed, autoBrowseSpeed, autoBrowseRunning, onToggleAutoBrowse, onAutoBrowseSpeed, onAutoReachedEnd, selection, { selection = it }, isFavorite, isRead, onFavorite, onOpenFull, onViewed, onSwipeLeft, onSwipeRight, onScrollUp, onScrollDown)
         if (selection.isNotEmpty()) {
             Row(Modifier.fillMaxWidth().align(Alignment.TopCenter).background(Color(0xFF111111)).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("已选 ${selection.size}", color = Color.White, modifier = Modifier.weight(1f))
@@ -110,6 +111,7 @@ private fun OneColumn(
     autoBrowseRunning: Boolean,
     onToggleAutoBrowse: () -> Unit,
     onAutoBrowseSpeed: (Float) -> Unit,
+    onAutoReachedEnd: () -> Unit,
     selection: Set<String>,
     onSelection: (Set<String>) -> Unit,
     isFavorite: (String)->Boolean,
@@ -137,9 +139,11 @@ private fun OneColumn(
         }
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
+    var userHolding by remember { mutableStateOf(false) }
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
     var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed) { while (autoBrowseRunning) { state.dispatchRawDelta(autoBrowseSpeed); delay(16) } }
+    var autoEndTriggered by remember(images) { mutableStateOf(false) }
+    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed, userHolding) { while (autoBrowseRunning) { if (!userHolding) { val before = state.firstVisibleItemIndex; state.dispatchRawDelta(autoBrowseSpeed); val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1); if (!autoEndTriggered && before >= (images.size - visible).coerceAtLeast(0)) { autoEndTriggered = true; onAutoReachedEnd() } }; delay(16) } }
     LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
@@ -166,7 +170,7 @@ private fun OneColumn(
                 .nestedScroll(speedConnection)
                 .pointerInput(images, scrollSpeed) {
                 detectDragGestures(
-                    onDragStart = { drag = Offset.Zero },
+                    onDragStart = { drag = Offset.Zero; userHolding = true },
                     onDrag = { change, amount ->
                         drag += amount
                         if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
@@ -177,8 +181,9 @@ private fun OneColumn(
                             drag.x > 150f && abs(drag.x) > abs(drag.y) * 1.5f -> onSwipeRight()
                         }
                         drag = Offset.Zero
+                        userHolding = false
                     },
-                    onDragCancel = { drag = Offset.Zero }
+                    onDragCancel = { drag = Offset.Zero; userHolding = false }
                 )
             },
         verticalArrangement = Arrangement.spacedBy(1.dp)
@@ -208,6 +213,7 @@ private fun MultiColumn(
     autoBrowseRunning: Boolean,
     onToggleAutoBrowse: () -> Unit,
     onAutoBrowseSpeed: (Float) -> Unit,
+    onAutoReachedEnd: () -> Unit,
     selection: Set<String>,
     onSelection: (Set<String>) -> Unit,
     isFavorite: (String)->Boolean,
@@ -235,9 +241,11 @@ private fun MultiColumn(
         }
     }
     var drag by remember { mutableStateOf(Offset.Zero) }
+    var userHolding by remember { mutableStateOf(false) }
     var showAutoSlider by rememberSaveable { mutableStateOf(false) }
     var autoSliderTouched by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed) { while (autoBrowseRunning) { state.dispatchRawDelta(autoBrowseSpeed); delay(16) } }
+    var autoEndTriggered by remember(images) { mutableStateOf(false) }
+    LaunchedEffect(autoBrowseRunning, autoBrowseSpeed, userHolding) { while (autoBrowseRunning) { if (!userHolding) { val before = state.firstVisibleItemIndex; state.dispatchRawDelta(autoBrowseSpeed); val visible = state.layoutInfo.visibleItemsInfo.size.coerceAtLeast(1); if (!autoEndTriggered && before >= (images.size - visible).coerceAtLeast(0)) { autoEndTriggered = true; onAutoReachedEnd() } }; delay(16) } }
     LaunchedEffect(autoSliderTouched, autoBrowseSpeed) { if (autoSliderTouched) { delay(2000); showAutoSlider = false; autoSliderTouched = false } }
     TrackScroll(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset, onScrollUp, onScrollDown)
     var lastTitle by rememberSaveable { mutableStateOf(titleToken(images)) }
@@ -263,7 +271,7 @@ private fun MultiColumn(
                            .nestedScroll(speedConnection)
                            .pointerInput(images, columns, scrollSpeed) {
                 detectDragGestures(
-                    onDragStart = { drag = Offset.Zero },
+                    onDragStart = { drag = Offset.Zero; userHolding = true },
                     onDrag = { change, amount ->
                         drag += amount
                         if (abs(drag.x) > abs(drag.y) * 1.4f) change.consume()
@@ -274,8 +282,9 @@ private fun MultiColumn(
                             drag.x > 150f && abs(drag.x) > abs(drag.y) * 1.5f -> onSwipeRight()
                         }
                         drag = Offset.Zero
+                        userHolding = false
                     },
-                    onDragCancel = { drag = Offset.Zero }
+                    onDragCancel = { drag = Offset.Zero; userHolding = false }
                 )
             },
         horizontalArrangement = Arrangement.spacedBy(1.dp),

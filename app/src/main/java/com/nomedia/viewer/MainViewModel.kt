@@ -172,36 +172,43 @@ class MainViewModel(private val repo: AppRepository, private val storage: Storag
         delay(120)
         val imgs = withContext(Dispatchers.IO) { repo.cachedImages(paths) }
         _state.value = _state.value.copy(currentTab = 0, browsingTitle = title, currentAlbumPath = albumPath, images = imgs, viewed = repo.viewed(), favorites = repo.favorites(), loading = false, bottomBarVisible = true, browseReturnTab = returnTab, browseSourcePaths = sourcePaths, browseSourceIndex = sourceIndex, message = if (imgs.isEmpty()) "该文件夹没有图片" else null)
+        val nextIndex = sourceIndex + 1
+        if (nextIndex in sourcePaths.indices) viewModelScope.launch(Dispatchers.IO) { repo.cachedImages(listOf(sourcePaths[nextIndex])) }
     }
 
     fun markRead(path: String) { repo.markViewed(path); _state.value = _state.value.copy(viewed = repo.viewed()) }
     fun resetViewed() { repo.resetViewed(); _state.value = _state.value.copy(viewed = emptySet(), message = "已重置阅读标记") }
 
-    fun goNextAlbumIfPossible() = goRelativeAlbum(1)
-    fun goPreviousAlbumIfPossible() = goRelativeAlbum(-1)
+    fun goNextAlbumIfPossible() = goRelativeAlbum(1, show = true)
+    fun goPreviousAlbumIfPossible() = goRelativeAlbum(-1, show = true)
+    fun autoAdvanceToNextAlbum(): Boolean = goRelativeAlbum(1, show = false)
 
-    private fun goRelativeAlbum(delta: Int) {
+    private fun goRelativeAlbum(delta: Int, show: Boolean): Boolean {
         val s = _state.value
         if (s.browseSourcePaths.isNotEmpty() && s.browseSourceIndex in s.browseSourcePaths.indices) {
             val target = s.browseSourceIndex + delta
             if (target in s.browseSourcePaths.indices) {
                 val path = s.browseSourcePaths[target]
-                showNotice(if (delta > 0) "已进入下一个文件夹：${java.io.File(path).name}" else "已进入上一个文件夹：${java.io.File(path).name}")
+                if (show) showNotice(if (delta > 0) "已进入下一个文件夹：${java.io.File(path).name}" else "已进入上一个文件夹：${java.io.File(path).name}")
                 browsePaths(listOf(path), java.io.File(path).name.ifBlank { "图片" }, path, s.browseReturnTab, s.browseSourcePaths, target)
+                return true
             } else {
-                showNotice(if (delta > 0) "已经是最后一个文件夹" else "已经是第一个文件夹")
+                if (show) showNotice(if (delta > 0) "已经是最后一个文件夹" else "已经是第一个文件夹")
+                return false
             }
-            return
+            return false
         }
-        val current = s.currentAlbumPath ?: return
+        val current = s.currentAlbumPath ?: return false
         val albums = s.albums
         val idx = albums.indexOfFirst { it.path == current }
         val target = idx + delta
         if (idx >= 0 && target in albums.indices) {
             val next = albums[target]
-            showNotice(if (delta > 0) "已进入下一个文件夹：${next.name}" else "已进入上一个文件夹：${next.name}")
+            if (show) showNotice(if (delta > 0) "已进入下一个文件夹：${next.name}" else "已进入上一个文件夹：${next.name}")
             browseAlbum(next.path)
+            return true
         }
+        return false
     }
 
     private fun showNotice(text: String) {
