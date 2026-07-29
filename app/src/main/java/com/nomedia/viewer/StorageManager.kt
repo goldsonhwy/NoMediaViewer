@@ -48,6 +48,8 @@ class StorageManager(private val context: Context) {
         val src = File(imagePath)
         require(src.exists()) { "源文件不存在" }
         val base = File(if (dirPath.isNotBlank()) dirPath else File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Yellow-gallery收藏").absolutePath)
+        base.mkdirs()
+        runCatching { File(base, ".nomedia").apply { if (!exists()) createNewFile() } }
         val dst = File(base, relativePath)
         dst.parentFile?.mkdirs()
         src.inputStream().use { input -> FileOutputStream(dst).use { input.copyTo(it) } }
